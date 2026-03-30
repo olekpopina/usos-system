@@ -29,6 +29,22 @@ public class Student {
         return indeks;
     }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setImie(String imie) {
+        this.imie = imie;
+    }
+
+    public void setNazwisko(String nazwisko) {
+        this.nazwisko = nazwisko;
+    }
+
+    public void setIndeks(int indeks) {
+        this.indeks = indeks;
+    }
+
     @Override
     public String toString() {
         return id + " " + imie + " " + nazwisko + " " + indeks;
