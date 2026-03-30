@@ -1,28 +1,26 @@
 package pl.usos.usossystem.repository;
 
 import pl.usos.usossystem.config.DatabaseConnection;
-import pl.usos.usossystem.model.Student;
+import pl.usos.usossystem.model.Przedmiot;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StudentRepository {
+public class PrzedmiotRepository {
 
-    public List<Student> getAllStudents() {
-        List<Student> students = new ArrayList<>();
-        String sql = "SELECT * FROM student ORDER BY id";
+    public List<Przedmiot> getAllPrzedmioty() {
+        List<Przedmiot> przedmioty = new ArrayList<>();
+        String sql = "SELECT * FROM przedmiot ORDER BY id";
 
         try (Connection conn = DatabaseConnection.connect();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                students.add(new Student(
+                przedmioty.add(new Przedmiot(
                         rs.getInt("id"),
-                        rs.getString("imie"),
-                        rs.getString("nazwisko"),
-                        rs.getInt("indeks")
+                        rs.getString("nazwa")
                 ));
             }
 
@@ -30,18 +28,16 @@ public class StudentRepository {
             e.printStackTrace();
         }
 
-        return students;
+        return przedmioty;
     }
 
-    public void addStudent(String imie, String nazwisko, int indeks) {
-        String sql = "INSERT INTO student (imie, nazwisko, indeks) VALUES (?, ?, ?)";
+    public void addPrzedmiot(String nazwa) {
+        String sql = "INSERT INTO przedmiot (nazwa) VALUES (?)";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, imie);
-            stmt.setString(2, nazwisko);
-            stmt.setInt(3, indeks);
+            stmt.setString(1, nazwa);
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -49,16 +45,14 @@ public class StudentRepository {
         }
     }
 
-    public void updateStudent(int id, String imie, String nazwisko, int indeks) {
-        String sql = "UPDATE student SET imie = ?, nazwisko = ?, indeks = ? WHERE id = ?";
+    public void updatePrzedmiot(int id, String nazwa) {
+        String sql = "UPDATE przedmiot SET nazwa = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, imie);
-            stmt.setString(2, nazwisko);
-            stmt.setInt(3, indeks);
-            stmt.setInt(4, id);
+            stmt.setString(1, nazwa);
+            stmt.setInt(2, id);
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -66,8 +60,8 @@ public class StudentRepository {
         }
     }
 
-    public void deleteStudent(int id) {
-        String sql = "DELETE FROM student WHERE id = ?";
+    public void deletePrzedmiot(int id) {
+        String sql = "DELETE FROM przedmiot WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
