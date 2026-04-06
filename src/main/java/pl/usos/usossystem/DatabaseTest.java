@@ -9,7 +9,7 @@ public class DatabaseTest {
     public static void main(String[] args) {
 
         StudentRepository repo = new StudentRepository();
-        repo.addStudent("Anna", "Nowak", 54321);
+
 
         List<Student> students = repo.getAllStudents();
 
