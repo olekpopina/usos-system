@@ -1,5 +1,7 @@
 package pl.usos.usossystem.model;
 
+import pl.usos.usossystem.service.SemesterStatus;
+
 public class Student {
     private int id;
     private String imie;
@@ -8,7 +10,7 @@ public class Student {
     private String haslo;
     private Integer aktualnySemestrId;
     private String aktualnySemestrNazwa;
-    private String statusSemestru;
+    private SemesterStatus statusSemestru;
 
     public Student(int id, String imie, String nazwisko, int indeks) {
         this.id = id;
@@ -18,7 +20,7 @@ public class Student {
     }
 
     public Student(int id, String imie, String nazwisko, int indeks,
-                   String haslo, Integer aktualnySemestrId, String statusSemestru) {
+                   String haslo, Integer aktualnySemestrId, SemesterStatus statusSemestru) {
         this.id = id;
         this.imie = imie;
         this.nazwisko = nazwisko;
@@ -57,6 +59,10 @@ public class Student {
     }
 
     public String getStatusSemestru() {
+        return statusSemestru == null ? "Brak" : statusSemestru.getDisplayName();
+    }
+
+    public SemesterStatus getSemesterStatus() {
         return statusSemestru;
     }
 
@@ -64,7 +70,7 @@ public class Student {
         this.aktualnySemestrNazwa = aktualnySemestrNazwa;
     }
 
-    public void setStatusSemestru(String statusSemestru) {
+    public void setStatusSemestru(SemesterStatus statusSemestru) {
         this.statusSemestru = statusSemestru;
     }
 

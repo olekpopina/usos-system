@@ -19,11 +19,9 @@ Uwaga: projekt nalezy uruchamiac na JDK 17. Na nowszych wersjach Javy konfigurac
    - baza: `usos_db`
    - user: `root`
    - haslo: `usos`
-3. Wykonaj skrypt `database/init.sql`.
+3. Aplikacja przy pierwszym polaczeniu sama probuje utworzyc baze `usos_db`, tabele i dane startowe z `database/init.sql`.
 
 Jesli chcesz uzyc innych danych logowania do MySQL, zmien ustawienia w `src/main/java/pl/usos/usossystem/config/DatabaseConnection.java`.
-
-Od tej wersji aplikacja przy pierwszym polaczeniu sama probuje utworzyc baze `usos_db` i tabele na podstawie `database/init.sql`, jesli baza jeszcze nie istnieje.
 
 ## Uruchomienie
 
@@ -49,14 +47,17 @@ pip install mysql-connector-python
 python scripts/seed_test_data.py
 ```
 
-Skrypt dodaje kilka kont testowych z roznymi statusami:
+Skrypt dodaje 8 kont testowych z roznymi statusami:
 - student z kompletem ocen
 - student warunkowy
-- student z wiecej niz jednym dlugiem
+- student niezaliczony
+- student w trakcie z brakujaca ocena
+- dane na semestrze 1 i 2
 
 ## Reset bazy danych
 
-Jesli komus baza "rozjechala sie" po starszych wersjach projektu, najprosciej wyczyscic ja i odtworzyc od zera:
+Jesli komus baza "rozjechala sie" po starszych wersjach projektu, najprosciej wyczyscic ja i odtworzyc od zera.
+Po ostatniej przebudowie workflow semestrow to jest tez zalecany krok przed demo albo wspolnym testowaniem na innym komputerze.
 
 ### Wariant 1: Python
 
@@ -84,12 +85,26 @@ W obu przypadkach trzeba miec:
 - admin: `admin` / `admin`
 - student: `numer_indeksu` / `student`
 
+## Minimalny workflow aplikacji
+
+1. Zaloguj sie jako `admin`.
+2. W zakladce `Przedmioty i semestry` przypisz wymagane przedmioty do semestrow.
+3. W zakladce `Studenci` dodaj studenta.
+4. W zakladce `Przebieg studiow` wybierz studenta i ustaw mu aktualny semestr.
+5. Aplikacja automatycznie przypisze studentowi wszystkie wymagane przedmioty tego semestru.
+6. Wpisuj oceny dla przedmiotow z aktualnego semestru.
+7. System sam przelicza ECTS, status semestru i mozliwosc rejestracji na kolejny semestr.
+8. Dla statusu `Zaliczony` albo `Warunkowy` mozna zarejestrowac studenta na kolejny semestr.
+
 ## Co zostalo dodane
 
 - ECTS w przedmiotach
+- automatyczne przypisanie studentowi przedmiotow po ustawieniu aktualnego semestru
 - przypisanie przedmiotow do semestrow z widokiem w panelu admina
 - logika zaliczenia semestru:
+  - brak wszystkich ocen -> `W trakcie`
   - 0 dlugow -> `Zaliczony`
-  - 1 dlug -> `Warunkowy`
-  - 2+ dlugow -> brak rejestracji na kolejny semestr
-- testy jednostkowe dla logiki zaliczenia semestru
+  - 1 dlug i odpowiedni prog ECTS -> `Warunkowy`
+  - 2+ dlugow -> `Niezaliczony`
+- przeliczanie `earned ECTS / required ECTS / prog warunkowy`
+- testy jednostkowe dla logiki zaliczenia i przebiegu studiow

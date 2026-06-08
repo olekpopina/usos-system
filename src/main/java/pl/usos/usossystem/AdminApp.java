@@ -1,7 +1,5 @@
 package pl.usos.usossystem;
 
-import javafx.application.Application;
-import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -16,35 +14,42 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import pl.usos.usossystem.model.Przedmiot;
 import pl.usos.usossystem.model.Semestr;
+import pl.usos.usossystem.model.SemesterProgressView;
 import pl.usos.usossystem.model.Student;
-import pl.usos.usossystem.model.StudentPrzedmiotView;
+import pl.usos.usossystem.model.StudentCourseRecord;
 import pl.usos.usossystem.repository.OcenaRepository;
 import pl.usos.usossystem.repository.PrzedmiotRepository;
 import pl.usos.usossystem.repository.SemestrRepository;
 import pl.usos.usossystem.repository.StudentRepository;
 import pl.usos.usossystem.repository.StudentSemestrRepository;
 import pl.usos.usossystem.service.SemesterCompletionService;
-import pl.usos.usossystem.service.SemesterDecision;
+import pl.usos.usossystem.service.SemesterWorkflowService;
 
-import java.util.List;
-
-public class AdminApp extends Application {
+public class AdminApp extends javafx.application.Application {
 
     private final StudentRepository studentRepository = new StudentRepository();
     private final PrzedmiotRepository przedmiotRepository = new PrzedmiotRepository();
     private final SemestrRepository semestrRepository = new SemestrRepository();
     private final StudentSemestrRepository studentSemestrRepository = new StudentSemestrRepository();
     private final OcenaRepository ocenaRepository = new OcenaRepository();
-    private final SemesterCompletionService semesterCompletionService = new SemesterCompletionService();
+    private final SemesterWorkflowService workflowService = new SemesterWorkflowService(
+            studentRepository,
+            semestrRepository,
+            studentSemestrRepository,
+            ocenaRepository,
+            new SemesterCompletionService()
+    );
 
     private final TableView<Student> studentTable = new TableView<>();
     private final TableView<Przedmiot> przedmiotTable = new TableView<>();
     private final TableView<Przedmiot> semestrPrzedmiotTable = new TableView<>();
-    private final TableView<StudentPrzedmiotView> studentPrzedmiotTable = new TableView<>();
+    private final TableView<StudentCourseRecord> workflowCourseTable = new TableView<>();
+    private final TableView<StudentCourseRecord> studentHistoryTable = new TableView<>();
 
     private final TextField studentIdField = new TextField();
     private final TextField imieField = new TextField();
@@ -55,30 +60,42 @@ public class AdminApp extends Application {
     private final TextField przedmiotNazwaField = new TextField();
     private final TextField przedmiotEctsField = new TextField();
 
-    private final ComboBox<Student> studentCombo = new ComboBox<>();
-    private final ComboBox<Semestr> semestrCombo = new ComboBox<>();
-    private final ComboBox<Przedmiot> przedmiotCombo = new ComboBox<>();
-    private final TextField ocenaField = new TextField();
+    private final ComboBox<Student> workflowStudentCombo = new ComboBox<>();
+    private final ComboBox<Semestr> workflowSemestrCombo = new ComboBox<>();
+    private final ComboBox<StudentCourseRecord> workflowCourseCombo = new ComboBox<>();
+    private final TextField workflowOcenaField = new TextField();
+
+    private final ComboBox<Semestr> mappingSemestrCombo = new ComboBox<>();
+    private final ComboBox<Przedmiot> mappingPrzedmiotCombo = new ComboBox<>();
+
+    private final Label studentPreviewSemestrLabel = new Label("-");
+    private final Label studentPreviewStatusLabel = new Label("-");
+    private final Label studentPreviewEctsLabel = new Label("-");
+
+    private final Label workflowCurrentSemestrLabel = new Label("-");
+    private final Label workflowStatusLabel = new Label("-");
+    private final Label workflowEctsLabel = new Label("-");
+    private final Label workflowThresholdLabel = new Label("-");
+    private final Label workflowFailedLabel = new Label("-");
+    private final Label workflowMissingLabel = new Label("-");
+    private final Label workflowCanRegisterLabel = new Label("-");
 
     @Override
     public void start(Stage stage) {
         TabPane tabPane = new TabPane();
-
         Tab studenciTab = new Tab("Studenci", createStudenciTab());
-        Tab przedmiotyTab = new Tab("Przedmioty", createPrzedmiotyTab());
-        Tab etapTab = new Tab("Etap studiow", createEtapTab());
+        Tab przedmiotyTab = new Tab("Przedmioty i semestry", createPrzedmiotyTab());
+        Tab przebiegTab = new Tab("Przebieg studiow", createPrzebiegTab());
 
         studenciTab.setClosable(false);
         przedmiotyTab.setClosable(false);
-        etapTab.setClosable(false);
-
-        tabPane.getTabs().addAll(studenciTab, przedmiotyTab, etapTab);
+        przebiegTab.setClosable(false);
+        tabPane.getTabs().addAll(studenciTab, przedmiotyTab, przebiegTab);
 
         refreshAll();
 
-        Scene scene = new Scene(tabPane, 1180, 820);
+        stage.setScene(new Scene(tabPane, 1280, 860));
         stage.setTitle("Mini-USOS - Panel dziekanatu");
-        stage.setScene(scene);
         stage.show();
     }
 
@@ -98,20 +115,21 @@ public class AdminApp extends Application {
         TableColumn<Student, String> semestrCol = new TableColumn<>("Aktualny semestr");
         semestrCol.setCellValueFactory(new PropertyValueFactory<>("aktualnySemestrNazwa"));
 
-        TableColumn<Student, String> statusCol = new TableColumn<>("Status semestru");
+        TableColumn<Student, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("statusSemestru"));
 
-        studentTable.getColumns().clear();
-        studentTable.getColumns().addAll(idCol, imieCol, nazwiskoCol, indeksCol, semestrCol, statusCol);
+        studentTable.getColumns().setAll(idCol, imieCol, nazwiskoCol, indeksCol, semestrCol, statusCol);
         studentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        studentTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, selected) -> {
-            if (selected != null) {
-                studentIdField.setText(String.valueOf(selected.getId()));
-                imieField.setText(selected.getImie());
-                nazwiskoField.setText(selected.getNazwisko());
-                indeksField.setText(String.valueOf(selected.getIndeks()));
+        studentTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, student) -> {
+            if (student == null) {
+                return;
             }
+            studentIdField.setText(String.valueOf(student.getId()));
+            imieField.setText(student.getImie());
+            nazwiskoField.setText(student.getNazwisko());
+            indeksField.setText(String.valueOf(student.getIndeks()));
+            workflowStudentCombo.setValue(findStudentById(student.getId()));
+            updateStudentPreview(student);
         });
 
         studentIdField.setEditable(false);
@@ -129,7 +147,6 @@ public class AdminApp extends Application {
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-
         form.add(new Label("ID:"), 0, 0);
         form.add(studentIdField, 1, 0);
         form.add(new Label("Imie:"), 0, 1);
@@ -143,7 +160,19 @@ public class AdminApp extends Application {
         form.add(deleteButton, 0, 5);
         form.add(clearButton, 1, 5);
 
-        VBox root = new VBox(15, new Label("Zarzadzanie studentami"), studentTable, form);
+        GridPane preview = new GridPane();
+        preview.setHgap(12);
+        preview.setVgap(8);
+        preview.add(new Label("Podglad aktualnego semestru"), 0, 0, 2, 1);
+        preview.add(new Label("Semestr:"), 0, 1);
+        preview.add(studentPreviewSemestrLabel, 1, 1);
+        preview.add(new Label("Status:"), 0, 2);
+        preview.add(studentPreviewStatusLabel, 1, 2);
+        preview.add(new Label("ECTS:"), 0, 3);
+        preview.add(studentPreviewEctsLabel, 1, 3);
+
+        HBox lowerSection = new HBox(30, form, preview);
+        VBox root = new VBox(15, new Label("Zarzadzanie studentami"), studentTable, lowerSection);
         root.setPadding(new Insets(15));
         return root;
     }
@@ -152,22 +181,21 @@ public class AdminApp extends Application {
         TableColumn<Przedmiot, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
-        TableColumn<Przedmiot, String> nazwaCol = new TableColumn<>("Nazwa przedmiotu");
+        TableColumn<Przedmiot, String> nazwaCol = new TableColumn<>("Nazwa");
         nazwaCol.setCellValueFactory(new PropertyValueFactory<>("nazwa"));
 
         TableColumn<Przedmiot, Integer> ectsCol = new TableColumn<>("ECTS");
         ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
-        przedmiotTable.getColumns().clear();
-        przedmiotTable.getColumns().addAll(idCol, nazwaCol, ectsCol);
+        przedmiotTable.getColumns().setAll(idCol, nazwaCol, ectsCol);
         przedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        przedmiotTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, selected) -> {
-            if (selected != null) {
-                przedmiotIdField.setText(String.valueOf(selected.getId()));
-                przedmiotNazwaField.setText(selected.getNazwa());
-                przedmiotEctsField.setText(String.valueOf(selected.getEcts()));
+        przedmiotTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, przedmiot) -> {
+            if (przedmiot == null) {
+                return;
             }
+            przedmiotIdField.setText(String.valueOf(przedmiot.getId()));
+            przedmiotNazwaField.setText(przedmiot.getNazwa());
+            przedmiotEctsField.setText(String.valueOf(przedmiot.getEcts()));
         });
 
         przedmiotIdField.setEditable(false);
@@ -185,7 +213,6 @@ public class AdminApp extends Application {
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-
         form.add(new Label("ID:"), 0, 0);
         form.add(przedmiotIdField, 1, 0);
         form.add(new Label("Nazwa:"), 0, 1);
@@ -197,92 +224,129 @@ public class AdminApp extends Application {
         form.add(deleteButton, 0, 4);
         form.add(clearButton, 1, 4);
 
-        VBox root = new VBox(15, new Label("Zarzadzanie przedmiotami"), przedmiotTable, form);
+        Button przypiszButton = new Button("Przypisz przedmiot do semestru");
+        przypiszButton.setOnAction(e -> przypiszPrzedmiotDoSemestru());
+        mappingSemestrCombo.valueProperty().addListener((obs, oldValue, value) -> odswiezPrzedmiotySemestruKonfiguracyjne());
+
+        GridPane mappingForm = new GridPane();
+        mappingForm.setHgap(10);
+        mappingForm.setVgap(10);
+        mappingForm.add(new Label("Semestr:"), 0, 0);
+        mappingForm.add(mappingSemestrCombo, 1, 0);
+        mappingForm.add(new Label("Przedmiot:"), 0, 1);
+        mappingForm.add(mappingPrzedmiotCombo, 1, 1);
+        mappingForm.add(przypiszButton, 0, 2, 2, 1);
+
+        TableColumn<Przedmiot, String> mapNazwaCol = new TableColumn<>("Przedmiot semestru");
+        mapNazwaCol.setCellValueFactory(new PropertyValueFactory<>("nazwa"));
+
+        TableColumn<Przedmiot, Integer> mapEctsCol = new TableColumn<>("ECTS");
+        mapEctsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
+
+        semestrPrzedmiotTable.getColumns().setAll(mapNazwaCol, mapEctsCol);
+        semestrPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        HBox lowerSection = new HBox(30, form, new VBox(10, new Label("Konfiguracja semestru"), mappingForm, semestrPrzedmiotTable));
+        VBox root = new VBox(15, new Label("Przedmioty i przypisania do semestrow"), przedmiotTable, lowerSection);
         root.setPadding(new Insets(15));
         return root;
     }
 
-    private VBox createEtapTab() {
-        Label opis = new Label("Obsluga semestrow, ocen i rejestracji studenta");
+    private VBox createPrzebiegTab() {
+        workflowStudentCombo.valueProperty().addListener((obs, oldValue, student) -> updateWorkflowForStudent(student));
 
-        Button ustawSemestrButton = new Button("Ustaw studentowi aktualny semestr");
-        Button przypiszPrzedmiotDoSemestruButton = new Button("Przypisz przedmiot do semestru");
-        Button przypiszPrzedmiotyStudentowiButton = new Button("Przypisz studentowi przedmioty z semestru");
-        Button dodajOceneButton = new Button("Dodaj lub popraw ocene");
-        Button zaliczRecznieButton = new Button("Zalicz semestr recznie");
-        Button kolejnySemestrButton = new Button("Rejestruj na kolejny semestr");
-        Button pokazPrzedmiotyButton = new Button("Pokaz przedmioty studenta");
+        GridPane selectionBox = new GridPane();
+        selectionBox.setHgap(10);
+        selectionBox.setVgap(10);
+        selectionBox.add(new Label("Student:"), 0, 0);
+        selectionBox.add(workflowStudentCombo, 1, 0);
+        selectionBox.add(new Label("Semestr do ustawienia:"), 0, 1);
+        selectionBox.add(workflowSemestrCombo, 1, 1);
 
-        ustawSemestrButton.setOnAction(e -> ustawAktualnySemestrStudenta());
-        przypiszPrzedmiotDoSemestruButton.setOnAction(e -> przypiszPrzedmiotDoSemestru());
-        przypiszPrzedmiotyStudentowiButton.setOnAction(e -> przypiszStudentowiPrzedmiotyZSemestru());
-        dodajOceneButton.setOnAction(e -> dodajOcene());
-        zaliczRecznieButton.setOnAction(e -> zaliczSemestrRecznie());
-        kolejnySemestrButton.setOnAction(e -> rejestrujNaKolejnySemestr());
-        pokazPrzedmiotyButton.setOnAction(e -> pokazPrzedmiotyStudenta());
+        GridPane summaryBox = new GridPane();
+        summaryBox.setHgap(12);
+        summaryBox.setVgap(8);
+        summaryBox.add(new Label("Aktualny semestr:"), 0, 0);
+        summaryBox.add(workflowCurrentSemestrLabel, 1, 0);
+        summaryBox.add(new Label("Status:"), 0, 1);
+        summaryBox.add(workflowStatusLabel, 1, 1);
+        summaryBox.add(new Label("ECTS zdobyte / wymagane:"), 0, 2);
+        summaryBox.add(workflowEctsLabel, 1, 2);
+        summaryBox.add(new Label("Prog warunkowy ECTS:"), 0, 3);
+        summaryBox.add(workflowThresholdLabel, 1, 3);
+        summaryBox.add(new Label("Niezaliczone przedmioty:"), 0, 4);
+        summaryBox.add(workflowFailedLabel, 1, 4);
+        summaryBox.add(new Label("Brakujace oceny:"), 0, 5);
+        summaryBox.add(workflowMissingLabel, 1, 5);
+        summaryBox.add(new Label("Mozna rejestrowac dalej:"), 0, 6);
+        summaryBox.add(workflowCanRegisterLabel, 1, 6);
 
-        semestrCombo.valueProperty().addListener((obs, oldVal, selected) -> odswiezPrzedmiotySemestru());
-
-        GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(10);
-
-        form.add(new Label("Student:"), 0, 0);
-        form.add(studentCombo, 1, 0);
-        form.add(new Label("Semestr:"), 0, 1);
-        form.add(semestrCombo, 1, 1);
-        form.add(new Label("Przedmiot:"), 0, 2);
-        form.add(przedmiotCombo, 1, 2);
-        form.add(new Label("Ocena:"), 0, 3);
-        form.add(ocenaField, 1, 3);
-        form.add(ustawSemestrButton, 0, 4);
-        form.add(przypiszPrzedmiotDoSemestruButton, 1, 4);
-        form.add(przypiszPrzedmiotyStudentowiButton, 0, 5);
-        form.add(dodajOceneButton, 1, 5);
-        form.add(zaliczRecznieButton, 0, 6);
-        form.add(kolejnySemestrButton, 1, 6);
-        form.add(pokazPrzedmiotyButton, 0, 7);
-
-        TableColumn<Przedmiot, String> semestrPrzedmiotCol = new TableColumn<>("Przedmiot semestru");
-        semestrPrzedmiotCol.setCellValueFactory(new PropertyValueFactory<>("nazwa"));
-
-        TableColumn<Przedmiot, Integer> semestrPrzedmiotEctsCol = new TableColumn<>("ECTS");
-        semestrPrzedmiotEctsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
-
-        semestrPrzedmiotTable.getColumns().clear();
-        semestrPrzedmiotTable.getColumns().addAll(semestrPrzedmiotCol, semestrPrzedmiotEctsCol);
-        semestrPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        TableColumn<StudentPrzedmiotView, String> przedmiotCol = new TableColumn<>("Przedmiot");
+        TableColumn<StudentCourseRecord, String> przedmiotCol = new TableColumn<>("Przedmiot");
         przedmiotCol.setCellValueFactory(new PropertyValueFactory<>("przedmiot"));
 
-        TableColumn<StudentPrzedmiotView, Integer> ectsCol = new TableColumn<>("ECTS");
+        TableColumn<StudentCourseRecord, Integer> ectsCol = new TableColumn<>("ECTS");
         ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
-        TableColumn<StudentPrzedmiotView, String> semestrCol = new TableColumn<>("Semestr");
-        semestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
+        TableColumn<StudentCourseRecord, Double> ocenaCol = new TableColumn<>("Ocena");
+        ocenaCol.setCellValueFactory(new PropertyValueFactory<>("ocena"));
 
-        TableColumn<StudentPrzedmiotView, String> ocenaCol = new TableColumn<>("Ocena");
-        ocenaCol.setCellValueFactory(cell -> {
-            Double value = cell.getValue().getOcena();
-            return new ReadOnlyStringWrapper(value == null ? "-" : String.valueOf(value));
-        });
-
-        TableColumn<StudentPrzedmiotView, String> statusCol = new TableColumn<>("Przedmiot zaliczony");
+        TableColumn<StudentCourseRecord, String> statusCol = new TableColumn<>("Zaliczony");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        studentPrzedmiotTable.getColumns().clear();
-        studentPrzedmiotTable.getColumns().addAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
-        studentPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        workflowCourseTable.getColumns().setAll(przedmiotCol, ectsCol, ocenaCol, statusCol);
+        workflowCourseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<StudentCourseRecord, String> historyPrzedmiotCol = new TableColumn<>("Przedmiot");
+        historyPrzedmiotCol.setCellValueFactory(new PropertyValueFactory<>("przedmiot"));
+
+        TableColumn<StudentCourseRecord, String> historySemestrCol = new TableColumn<>("Semestr");
+        historySemestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
+
+        TableColumn<StudentCourseRecord, Integer> historyEctsCol = new TableColumn<>("ECTS");
+        historyEctsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
+
+        TableColumn<StudentCourseRecord, Double> historyOcenaCol = new TableColumn<>("Ocena");
+        historyOcenaCol.setCellValueFactory(new PropertyValueFactory<>("ocena"));
+
+        TableColumn<StudentCourseRecord, String> historyStatusCol = new TableColumn<>("Zaliczony");
+        historyStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        studentHistoryTable.getColumns().setAll(historyPrzedmiotCol, historySemestrCol, historyEctsCol, historyOcenaCol, historyStatusCol);
+        studentHistoryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        GridPane gradeForm = new GridPane();
+        gradeForm.setHgap(10);
+        gradeForm.setVgap(10);
+        gradeForm.add(new Label("Przedmiot z aktualnego semestru:"), 0, 0);
+        gradeForm.add(workflowCourseCombo, 1, 0);
+        gradeForm.add(new Label("Ocena:"), 0, 1);
+        gradeForm.add(workflowOcenaField, 1, 1);
+
+        Button ustawSemestrButton = new Button("Ustaw aktualny semestr");
+        Button zapiszOceneButton = new Button("Zapisz / popraw ocene");
+        Button naprawButton = new Button("Napraw przypisanie przedmiotow");
+        Button zaliczRecznieButton = new Button("Zalicz recznie");
+        Button kolejnySemestrButton = new Button("Rejestruj na kolejny semestr");
+
+        ustawSemestrButton.setOnAction(e -> ustawAktualnySemestrStudenta());
+        zapiszOceneButton.setOnAction(e -> zapiszOceneDlaAktualnegoSemestru());
+        naprawButton.setOnAction(e -> naprawPrzypisaniePrzedmiotow());
+        zaliczRecznieButton.setOnAction(e -> zaliczSemestrRecznie());
+        kolejnySemestrButton.setOnAction(e -> rejestrujNaKolejnySemestr());
+
+        HBox actions = new HBox(10, ustawSemestrButton, zapiszOceneButton, naprawButton, zaliczRecznieButton, kolejnySemestrButton);
 
         VBox root = new VBox(
                 15,
-                opis,
-                form,
-                new Label("Przedmioty przypisane do wybranego semestru"),
-                semestrPrzedmiotTable,
-                new Label("Przedmioty i oceny wybranego studenta"),
-                studentPrzedmiotTable
+                new Label("Workflow przebiegu studiow"),
+                selectionBox,
+                summaryBox,
+                new Label("Przedmioty aktualnego semestru"),
+                workflowCourseTable,
+                gradeForm,
+                actions,
+                new Label("Historia wszystkich przedmiotow studenta"),
+                studentHistoryTable
         );
         root.setPadding(new Insets(15));
         return root;
@@ -317,7 +381,6 @@ public class AdminApp extends Application {
         try {
             int id = Integer.parseInt(studentIdField.getText());
             int indeks = Integer.parseInt(indeksField.getText());
-
             studentRepository.updateStudent(id, imieField.getText().trim(), nazwiskoField.getText().trim(), indeks);
             refreshAll();
             clearStudentFields();
@@ -377,7 +440,6 @@ public class AdminApp extends Application {
             przedmiotRepository.updatePrzedmiot(id, nazwa, ects);
             refreshAll();
             clearPrzedmiotFields();
-            odswiezPrzedmiotySemestru();
         } catch (NumberFormatException ex) {
             showAlert("Blad", "ECTS musi byc liczba.");
         }
@@ -393,26 +455,11 @@ public class AdminApp extends Application {
         przedmiotRepository.deletePrzedmiot(id);
         refreshAll();
         clearPrzedmiotFields();
-        odswiezPrzedmiotySemestru();
-    }
-
-    private void ustawAktualnySemestrStudenta() {
-        Student student = studentCombo.getValue();
-        Semestr semestr = semestrCombo.getValue();
-
-        if (student == null || semestr == null) {
-            showAlert("Blad", "Wybierz studenta i semestr.");
-            return;
-        }
-
-        studentRepository.setStudentSemestr(student.getId(), semestr.getId());
-        refreshAll();
-        showInfo("OK", "Ustawiono aktualny semestr studentowi.");
     }
 
     private void przypiszPrzedmiotDoSemestru() {
-        Semestr semestr = semestrCombo.getValue();
-        Przedmiot przedmiot = przedmiotCombo.getValue();
+        Semestr semestr = mappingSemestrCombo.getValue();
+        Przedmiot przedmiot = mappingPrzedmiotCombo.getValue();
 
         if (semestr == null || przedmiot == null) {
             showAlert("Blad", "Wybierz semestr i przedmiot.");
@@ -420,139 +467,226 @@ public class AdminApp extends Application {
         }
 
         studentSemestrRepository.przypiszPrzedmiotDoSemestru(semestr.getId(), przedmiot.getId());
-        odswiezPrzedmiotySemestru();
+        odswiezPrzedmiotySemestruKonfiguracyjne();
         showInfo("OK", "Przedmiot przypisany do semestru.");
     }
 
-    private void przypiszStudentowiPrzedmiotyZSemestru() {
-        Student student = studentCombo.getValue();
-        Semestr semestr = semestrCombo.getValue();
+    private void ustawAktualnySemestrStudenta() {
+        Student student = workflowStudentCombo.getValue();
+        Semestr semestr = workflowSemestrCombo.getValue();
 
         if (student == null || semestr == null) {
             showAlert("Blad", "Wybierz studenta i semestr.");
-            return;
-        }
-
-        studentSemestrRepository.przypiszPrzedmiotySemestruStudentowi(student.getId(), semestr.getId());
-        aktualizujStatusSemestru(student.getId(), semestr.getId());
-        refreshAll();
-        pokazPrzedmiotyStudenta();
-        showInfo("OK", "Student otrzymal przedmioty z wybranego semestru.");
-    }
-
-    private void dodajOcene() {
-        Student student = studentCombo.getValue();
-        Semestr semestr = semestrCombo.getValue();
-        Przedmiot przedmiot = przedmiotCombo.getValue();
-        String ocenaText = ocenaField.getText().trim();
-
-        if (student == null || semestr == null || przedmiot == null || ocenaText.isEmpty()) {
-            showAlert("Blad", "Wybierz studenta, semestr, przedmiot i wpisz ocene.");
             return;
         }
 
         try {
-            double ocena = Double.parseDouble(ocenaText);
-
-            ocenaRepository.addOcena(student.getId(), przedmiot.getId(), semestr.getId(), ocena);
-            studentSemestrRepository.synchronizujZaliczeniePrzedmiotow(student.getId(), semestr.getId());
-            aktualizujStatusSemestru(student.getId(), semestr.getId());
-
+            SemesterProgressView progressView = workflowService.assignCurrentSemester(student.getId(), semestr.getId());
             refreshAll();
-            pokazPrzedmiotyStudenta();
-            ocenaField.clear();
-            showInfo("OK", "Zapisano ocene.");
+            workflowStudentCombo.setValue(findStudentById(student.getId()));
+            showWorkflowProgress(progressView);
+            showInfo("OK", "Ustawiono aktualny semestr i przypisano wymagane przedmioty.");
+        } catch (IllegalStateException ex) {
+            showAlert("Blad", ex.getMessage());
+        }
+    }
+
+    private void naprawPrzypisaniePrzedmiotow() {
+        Student student = workflowStudentCombo.getValue();
+        if (student == null || student.getAktualnySemestrId() == null) {
+            showAlert("Blad", "Wybierz studenta z ustawionym aktualnym semestrem.");
+            return;
+        }
+
+        SemesterProgressView progressView = workflowService.repairSemesterAssignments(student.getId(), student.getAktualnySemestrId());
+        refreshAll();
+        workflowStudentCombo.setValue(findStudentById(student.getId()));
+        showWorkflowProgress(progressView);
+        showInfo("OK", "Przypisania przedmiotow zostaly uzupelnione.");
+    }
+
+    private void zapiszOceneDlaAktualnegoSemestru() {
+        Student student = workflowStudentCombo.getValue();
+        StudentCourseRecord courseRecord = workflowCourseCombo.getValue();
+        String gradeText = workflowOcenaField.getText().trim();
+
+        if (student == null || student.getAktualnySemestrId() == null || courseRecord == null || gradeText.isEmpty()) {
+            showAlert("Blad", "Wybierz studenta, przedmiot i wpisz ocene.");
+            return;
+        }
+
+        try {
+            double grade = Double.parseDouble(gradeText);
+            SemesterProgressView progressView = workflowService.saveGradeAndRecalculate(
+                    student.getId(),
+                    student.getAktualnySemestrId(),
+                    courseRecord.getPrzedmiotId(),
+                    grade
+            );
+            refreshAll();
+            workflowStudentCombo.setValue(findStudentById(student.getId()));
+            showWorkflowProgress(progressView);
+            workflowOcenaField.clear();
+            showInfo("OK", "Ocena zostala zapisana.");
         } catch (NumberFormatException ex) {
             showAlert("Blad", "Ocena musi byc liczba.");
+        } catch (IllegalStateException ex) {
+            showAlert("Blad", ex.getMessage());
         }
     }
 
     private void zaliczSemestrRecznie() {
-        Student student = studentCombo.getValue();
-        Semestr semestr = semestrCombo.getValue();
-
-        if (student == null || semestr == null) {
-            showAlert("Blad", "Wybierz studenta i semestr.");
-            return;
-        }
-
-        studentRepository.setStatusSemestru(student.getId(), "Zaliczony");
-        refreshAll();
-        showInfo("OK", "Semestr oznaczono jako zaliczony recznie.");
-    }
-
-    private void rejestrujNaKolejnySemestr() {
-        Student student = studentCombo.getValue();
-        Semestr current = semestrCombo.getValue();
-
-        if (student == null || current == null) {
-            showAlert("Blad", "Wybierz studenta i aktualny semestr.");
-            return;
-        }
-
-        List<Double> grades = studentSemestrRepository.getOcenyStudentaWSemestrze(student.getId(), current.getId());
-        SemesterDecision decision = semesterCompletionService.evaluateSemester(grades);
-        Student aktualnyStudent = studentRepository.getStudentById(student.getId());
-        boolean manualOverride = aktualnyStudent != null && "Zaliczony".equals(aktualnyStudent.getStatusSemestru());
-
-        if (!semesterCompletionService.canRegisterNextSemester(decision) && !manualOverride) {
-            showAlert("Blad", "Student nie spelnia warunkow rejestracji na kolejny semestr.");
-            return;
-        }
-
-        Semestr next = semestrRepository.getNextSemestr(current.getNumer());
-        if (next == null) {
-            showAlert("Informacja", "Brak kolejnego semestru w bazie.");
-            return;
-        }
-
-        studentRepository.setStudentSemestr(student.getId(), next.getId());
-        studentSemestrRepository.przypiszPrzedmiotySemestruStudentowi(student.getId(), next.getId());
-
-        refreshAll();
-        pokazPrzedmiotyStudenta();
-        showInfo("OK", "Student zostal zarejestrowany na kolejny semestr: " + next.getNazwa());
-    }
-
-    private void pokazPrzedmiotyStudenta() {
-        Student student = studentCombo.getValue();
-
+        Student student = workflowStudentCombo.getValue();
         if (student == null) {
             showAlert("Blad", "Wybierz studenta.");
             return;
         }
 
-        studentPrzedmiotTable.setItems(
-                FXCollections.observableArrayList(studentSemestrRepository.getStudentDashboardData(student.getId()))
-        );
+        try {
+            SemesterProgressView progressView = workflowService.markCurrentSemesterPassedManually(student.getId());
+            refreshAll();
+            workflowStudentCombo.setValue(findStudentById(student.getId()));
+            showWorkflowProgress(progressView);
+            showInfo("OK", "Semestr oznaczono jako zaliczony recznie.");
+        } catch (IllegalStateException ex) {
+            showAlert("Blad", ex.getMessage());
+        }
     }
 
-    private void odswiezPrzedmiotySemestru() {
-        Semestr semestr = semestrCombo.getValue();
+    private void rejestrujNaKolejnySemestr() {
+        Student student = workflowStudentCombo.getValue();
+        if (student == null) {
+            showAlert("Blad", "Wybierz studenta.");
+            return;
+        }
+
+        try {
+            SemesterProgressView progressView = workflowService.registerForNextSemester(student.getId());
+            refreshAll();
+            workflowStudentCombo.setValue(findStudentById(student.getId()));
+            showWorkflowProgress(progressView);
+            showInfo("OK", "Student zostal zarejestrowany na kolejny semestr.");
+        } catch (IllegalStateException ex) {
+            showAlert("Blad", ex.getMessage());
+        }
+    }
+
+    private void updateStudentPreview(Student student) {
+        if (student == null) {
+            studentPreviewSemestrLabel.setText("-");
+            studentPreviewStatusLabel.setText("-");
+            studentPreviewEctsLabel.setText("-");
+            return;
+        }
+
+        SemesterProgressView progressView = workflowService.getCurrentSemesterProgress(student.getId());
+        studentPreviewSemestrLabel.setText(progressView.getSemestrNazwa());
+        studentPreviewStatusLabel.setText(progressView.getStatusLabel());
+        studentPreviewEctsLabel.setText(progressView.getEctsSummary());
+    }
+
+    private void updateWorkflowForStudent(Student student) {
+        if (student == null) {
+            clearWorkflowView();
+            return;
+        }
+
+        SemesterProgressView progressView = workflowService.getCurrentSemesterProgress(student.getId());
+        showWorkflowProgress(progressView);
+
+        if (student.getAktualnySemestrId() != null) {
+            workflowSemestrCombo.setValue(findSemestrById(student.getAktualnySemestrId()));
+        }
+    }
+
+    private void showWorkflowProgress(SemesterProgressView progressView) {
+        workflowCurrentSemestrLabel.setText(progressView.getSemestrNazwa());
+        workflowStatusLabel.setText(progressView.getStatusLabel());
+        workflowEctsLabel.setText(progressView.getEctsSummary());
+        workflowThresholdLabel.setText(String.valueOf(progressView.getConditionalEctsThreshold()));
+        workflowFailedLabel.setText(String.valueOf(progressView.getFailedSubjectsCount()));
+        workflowMissingLabel.setText(String.valueOf(progressView.getMissingGradesCount()));
+        workflowCanRegisterLabel.setText(progressView.getCanRegisterLabel());
+        workflowCourseTable.setItems(FXCollections.observableArrayList(progressView.getCourseRecords()));
+        workflowCourseCombo.setItems(FXCollections.observableArrayList(progressView.getCourseRecords()));
+
+        Student selectedStudent = workflowStudentCombo.getValue();
+        if (selectedStudent != null) {
+            studentHistoryTable.setItems(FXCollections.observableArrayList(workflowService.getStudentCourseHistory(selectedStudent.getId())));
+            updateStudentPreview(selectedStudent);
+        }
+    }
+
+    private void clearWorkflowView() {
+        workflowCurrentSemestrLabel.setText("-");
+        workflowStatusLabel.setText("-");
+        workflowEctsLabel.setText("-");
+        workflowThresholdLabel.setText("-");
+        workflowFailedLabel.setText("-");
+        workflowMissingLabel.setText("-");
+        workflowCanRegisterLabel.setText("-");
+        workflowCourseTable.setItems(FXCollections.observableArrayList());
+        workflowCourseCombo.setItems(FXCollections.observableArrayList());
+        studentHistoryTable.setItems(FXCollections.observableArrayList());
+    }
+
+    private void odswiezPrzedmiotySemestruKonfiguracyjne() {
+        Semestr semestr = mappingSemestrCombo.getValue();
         if (semestr == null) {
             semestrPrzedmiotTable.setItems(FXCollections.observableArrayList());
             return;
         }
 
-        semestrPrzedmiotTable.setItems(
-                FXCollections.observableArrayList(przedmiotRepository.getPrzedmiotyDlaSemestru(semestr.getId()))
-        );
-    }
-
-    private void aktualizujStatusSemestru(int studentId, int semestrId) {
-        List<Double> grades = studentSemestrRepository.getOcenyStudentaWSemestrze(studentId, semestrId);
-        String status = grades.isEmpty() ? "W trakcie" : semesterCompletionService.getStatusForStudent(grades);
-        studentRepository.setStatusSemestru(studentId, status);
+        semestrPrzedmiotTable.setItems(FXCollections.observableArrayList(przedmiotRepository.getPrzedmiotyDlaSemestru(semestr.getId())));
     }
 
     private void refreshAll() {
+        Integer selectedStudentId = workflowStudentCombo.getValue() == null ? null : workflowStudentCombo.getValue().getId();
+        Integer selectedMappingSemesterId = mappingSemestrCombo.getValue() == null ? null : mappingSemestrCombo.getValue().getId();
+        Integer selectedWorkflowSemesterId = workflowSemestrCombo.getValue() == null ? null : workflowSemestrCombo.getValue().getId();
+
         studentTable.setItems(FXCollections.observableArrayList(studentRepository.getAllStudents()));
         przedmiotTable.setItems(FXCollections.observableArrayList(przedmiotRepository.getAllPrzedmioty()));
 
-        studentCombo.setItems(FXCollections.observableArrayList(studentRepository.getAllStudents()));
-        semestrCombo.setItems(FXCollections.observableArrayList(semestrRepository.getAllSemestry()));
-        przedmiotCombo.setItems(FXCollections.observableArrayList(przedmiotRepository.getAllPrzedmioty()));
-        odswiezPrzedmiotySemestru();
+        workflowStudentCombo.setItems(FXCollections.observableArrayList(studentRepository.getAllStudents()));
+        workflowSemestrCombo.setItems(FXCollections.observableArrayList(semestrRepository.getAllSemestry()));
+        mappingSemestrCombo.setItems(FXCollections.observableArrayList(semestrRepository.getAllSemestry()));
+        mappingPrzedmiotCombo.setItems(FXCollections.observableArrayList(przedmiotRepository.getAllPrzedmioty()));
+
+        if (selectedStudentId != null) {
+            workflowStudentCombo.setValue(findStudentById(selectedStudentId));
+        }
+        if (selectedMappingSemesterId != null) {
+            mappingSemestrCombo.setValue(findSemestrById(selectedMappingSemesterId));
+        }
+        if (selectedWorkflowSemesterId != null) {
+            workflowSemestrCombo.setValue(findSemestrById(selectedWorkflowSemesterId));
+        }
+
+        odswiezPrzedmiotySemestruKonfiguracyjne();
+
+        if (workflowStudentCombo.getValue() != null) {
+            updateWorkflowForStudent(workflowStudentCombo.getValue());
+        } else {
+            clearWorkflowView();
+        }
+    }
+
+    private Student findStudentById(int studentId) {
+        return workflowStudentCombo.getItems().stream()
+                .filter(student -> student.getId() == studentId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Semestr findSemestrById(int semestrId) {
+        return workflowSemestrCombo.getItems().stream()
+                .filter(semestr -> semestr.getId() == semestrId)
+                .findFirst()
+                .orElseGet(() -> mappingSemestrCombo.getItems().stream()
+                        .filter(semestr -> semestr.getId() == semestrId)
+                        .findFirst()
+                        .orElse(null));
     }
 
     private void clearStudentFields() {

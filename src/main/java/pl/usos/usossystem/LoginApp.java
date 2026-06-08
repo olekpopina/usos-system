@@ -3,7 +3,11 @@ package pl.usos.usossystem;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import pl.usos.usossystem.model.Student;
@@ -21,7 +25,7 @@ public class LoginApp extends Application {
         loginField.setPromptText("Login");
 
         PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Hasło");
+        passwordField.setPromptText("Haslo");
 
         Button loginButton = new Button("Zaloguj");
 
@@ -51,10 +55,10 @@ public class LoginApp extends Application {
                         ex.printStackTrace();
                     }
                 } else {
-                    showAlert("Błąd", "Niepoprawny login lub hasło.");
+                    showAlert("Blad", "Niepoprawny login lub haslo.");
                 }
             } catch (NumberFormatException ex) {
-                showAlert("Błąd", "Login studenta powinien być numerem indeksu albo użyj admin/admin.");
+                showAlert("Blad", "Login studenta powinien byc numerem indeksu albo uzyj admin/admin.");
             }
         });
 

@@ -2,13 +2,15 @@ package pl.usos.usossystem.repository;
 
 import pl.usos.usossystem.config.DatabaseConnection;
 import pl.usos.usossystem.model.OcenaView;
+import pl.usos.usossystem.service.GradeGateway;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OcenaRepository {
+public class OcenaRepository implements GradeGateway {
 
+    @Override
     public void addOcena(int studentId, int przedmiotId, int semestrId, double ocena) {
         String sql = """
                 INSERT INTO ocena (student_id, przedmiot_id, semestr_id, ocena)

@@ -2,12 +2,13 @@ package pl.usos.usossystem.repository;
 
 import pl.usos.usossystem.config.DatabaseConnection;
 import pl.usos.usossystem.model.Semestr;
+import pl.usos.usossystem.service.SemesterGateway;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SemestrRepository {
+public class SemestrRepository implements SemesterGateway {
 
     public List<Semestr> getAllSemestry() {
         List<Semestr> list = new ArrayList<>();
@@ -32,6 +33,7 @@ public class SemestrRepository {
         return list;
     }
 
+    @Override
     public Semestr getNextSemestr(int currentNumer) {
         String sql = "SELECT * FROM semestr WHERE numer = ?";
 
@@ -47,6 +49,32 @@ public class SemestrRepository {
                         rs.getInt("numer"),
                         rs.getString("nazwa")
                 );
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    @Override
+    public Semestr getSemestrById(int semestrId) {
+        String sql = "SELECT * FROM semestr WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, semestrId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Semestr(
+                            rs.getInt("id"),
+                            rs.getInt("numer"),
+                            rs.getString("nazwa")
+                    );
+                }
             }
 
         } catch (SQLException e) {

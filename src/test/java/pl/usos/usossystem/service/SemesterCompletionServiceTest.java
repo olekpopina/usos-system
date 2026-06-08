@@ -1,8 +1,8 @@
 package pl.usos.usossystem.service;
 
 import org.junit.jupiter.api.Test;
+import pl.usos.usossystem.model.StudentCourseRecord;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,29 +27,59 @@ class SemesterCompletionServiceTest {
 
     @Test
     void semesterWithAllPassedSubjectsIsCompleted() {
-        SemesterDecision decision = service.evaluateSemester(List.of(3.0, 4.0, 5.0));
+        SemesterStatus decision = service.evaluateStatus(List.of(
+                course(1, "Matematyka", 5, 4.0),
+                course(2, "Programowanie", 6, 3.0),
+                course(3, "Bazy danych", 4, 5.0)
+        ));
 
-        assertEquals(SemesterDecision.ZALICZONY, decision);
+        assertEquals(SemesterStatus.ZALICZONY, decision);
     }
 
     @Test
-    void semesterWithOneDebtIsConditional() {
-        SemesterDecision decision = service.evaluateSemester(Arrays.asList(5.0, 4.0, null));
+    void semesterWithOneDebtAndEnoughEctsIsConditional() {
+        List<StudentCourseRecord> records = List.of(
+                course(1, "Matematyka", 5, 4.0),
+                course(2, "Programowanie", 4, 3.0),
+                course(3, "Fizyka", 4, 2.0)
+        );
 
-        assertEquals(SemesterDecision.WARUNKOWY, decision);
+        assertEquals(13, service.calculateRequiredEcts(records));
+        assertEquals(9, service.calculateEarnedEcts(records));
+        assertEquals(8, service.calculateConditionalEctsThreshold(records));
+        assertEquals(SemesterStatus.WARUNKOWY, service.evaluateStatus(records));
     }
 
     @Test
     void semesterWithTwoDebtsIsNotCompleted() {
-        SemesterDecision decision = service.evaluateSemester(Arrays.asList(5.0, 2.0, null));
+        SemesterStatus decision = service.evaluateStatus(List.of(
+                course(1, "Matematyka", 5, 4.0),
+                course(2, "Programowanie", 4, 2.0),
+                course(3, "Fizyka", 4, 2.0)
+        ));
 
-        assertEquals(SemesterDecision.NIEZALICZONY, decision);
+        assertEquals(SemesterStatus.NIEZALICZONY, decision);
+    }
+
+    @Test
+    void semesterWithMissingGradeStaysInProgress() {
+        SemesterStatus decision = service.evaluateStatus(List.of(
+                course(1, "Matematyka", 5, 4.0),
+                course(2, "Programowanie", 4, null)
+        ));
+
+        assertEquals(SemesterStatus.W_TRAKCIE, decision);
     }
 
     @Test
     void registrationIsAllowedOnlyForCompletedOrConditionalSemester() {
-        assertTrue(service.canRegisterNextSemester(SemesterDecision.ZALICZONY));
-        assertTrue(service.canRegisterNextSemester(SemesterDecision.WARUNKOWY));
-        assertFalse(service.canRegisterNextSemester(SemesterDecision.NIEZALICZONY));
+        assertTrue(SemesterStatus.ZALICZONY.canRegisterNextSemester());
+        assertTrue(SemesterStatus.WARUNKOWY.canRegisterNextSemester());
+        assertFalse(SemesterStatus.NIEZALICZONY.canRegisterNextSemester());
+        assertFalse(SemesterStatus.W_TRAKCIE.canRegisterNextSemester());
+    }
+
+    private StudentCourseRecord course(int id, String name, int ects, Double grade) {
+        return new StudentCourseRecord(id, name, ects, 1, "Semestr 1", grade, service.isSubjectPassed(grade));
     }
 }

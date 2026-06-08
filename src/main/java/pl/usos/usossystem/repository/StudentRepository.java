@@ -2,12 +2,14 @@ package pl.usos.usossystem.repository;
 
 import pl.usos.usossystem.config.DatabaseConnection;
 import pl.usos.usossystem.model.Student;
+import pl.usos.usossystem.service.SemesterStatus;
+import pl.usos.usossystem.service.StudentGateway;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StudentRepository {
+public class StudentRepository implements StudentGateway {
 
     public List<Student> getAllStudents() {
         List<Student> students = new ArrayList<>();
@@ -33,7 +35,7 @@ public class StudentRepository {
                         rs.getInt("indeks"),
                         rs.getString("haslo"),
                         (Integer) rs.getObject("aktualny_semestr_id"),
-                        rs.getString("status_semestru")
+                        SemesterStatus.fromDatabaseValue(rs.getString("status_semestru"))
                 );
                 s.setAktualnySemestrNazwa(rs.getString("semestr_nazwa"));
                 students.add(s);
@@ -56,7 +58,7 @@ public class StudentRepository {
             stmt.setString(2, nazwisko);
             stmt.setInt(3, indeks);
             stmt.setString(4, "student");
-            stmt.setString(5, "W trakcie");
+            stmt.setString(5, SemesterStatus.W_TRAKCIE.getDisplayName());
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -121,7 +123,7 @@ public class StudentRepository {
                         rs.getInt("indeks"),
                         rs.getString("haslo"),
                         (Integer) rs.getObject("aktualny_semestr_id"),
-                        rs.getString("status_semestru")
+                        SemesterStatus.fromDatabaseValue(rs.getString("status_semestru"))
                 );
                 s.setAktualnySemestrNazwa(rs.getString("semestr_nazwa"));
                 return s;
@@ -134,6 +136,7 @@ public class StudentRepository {
         return null;
     }
 
+    @Override
     public Student getStudentById(int studentId) {
         String sql = """
                 SELECT s.id, s.imie, s.nazwisko, s.indeks, s.haslo,
@@ -158,7 +161,7 @@ public class StudentRepository {
                             rs.getInt("indeks"),
                             rs.getString("haslo"),
                             (Integer) rs.getObject("aktualny_semestr_id"),
-                            rs.getString("status_semestru")
+                            SemesterStatus.fromDatabaseValue(rs.getString("status_semestru"))
                     );
                     student.setAktualnySemestrNazwa(rs.getString("semestr_nazwa"));
                     return student;
@@ -172,14 +175,16 @@ public class StudentRepository {
         return null;
     }
 
+    @Override
     public void setStudentSemestr(int studentId, int semestrId) {
-        String sql = "UPDATE student SET aktualny_semestr_id = ?, status_semestru = 'W trakcie' WHERE id = ?";
+        String sql = "UPDATE student SET aktualny_semestr_id = ?, status_semestru = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, semestrId);
-            stmt.setInt(2, studentId);
+            stmt.setString(2, SemesterStatus.W_TRAKCIE.getDisplayName());
+            stmt.setInt(3, studentId);
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -187,13 +192,14 @@ public class StudentRepository {
         }
     }
 
-    public void setStatusSemestru(int studentId, String status) {
+    @Override
+    public void setStatusSemestru(int studentId, SemesterStatus status) {
         String sql = "UPDATE student SET status_semestru = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, status);
+            stmt.setString(1, status.getDisplayName());
             stmt.setInt(2, studentId);
             stmt.executeUpdate();
 
