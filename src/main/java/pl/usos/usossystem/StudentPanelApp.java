@@ -112,6 +112,7 @@ public class StudentPanelApp {
         scrollPane.setPannable(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("page-scroll");
+        AppTheme.configureScrollPane(scrollPane);
 
         Scene scene = new Scene(scrollPane, 980, 720);
         AppTheme.apply(stage, scene);

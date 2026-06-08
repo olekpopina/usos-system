@@ -846,6 +846,7 @@ public class AdminApp extends javafx.application.Application {
         scrollPane.setPannable(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("page-scroll");
+        AppTheme.configureScrollPane(scrollPane);
         return scrollPane;
     }
 
