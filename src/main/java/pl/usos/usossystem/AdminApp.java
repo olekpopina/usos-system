@@ -7,14 +7,17 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import pl.usos.usossystem.model.Przedmiot;
@@ -88,6 +91,7 @@ public class AdminApp extends javafx.application.Application {
     @Override
     public void start(Stage stage) {
         TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().add("page-root");
         Tab studenciTab = new Tab("Studenci", createStudenciTab());
         Tab przedmiotyTab = new Tab("Przedmioty i semestry", createPrzedmiotyTab());
         Tab przebiegTab = new Tab("Przebieg studiow", createPrzebiegTab());
@@ -99,12 +103,14 @@ public class AdminApp extends javafx.application.Application {
 
         refreshAll();
 
-        stage.setScene(new Scene(tabPane, 1280, 860));
+        Scene scene = new Scene(tabPane, 1280, 860);
+        AppTheme.apply(stage, scene);
+        stage.setScene(scene);
         stage.setTitle("Mini-USOS - Panel dziekanatu");
         stage.show();
     }
 
-    private VBox createStudenciTab() {
+    private ScrollPane createStudenciTab() {
         TableColumn<Student, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
@@ -150,6 +156,7 @@ public class AdminApp extends javafx.application.Application {
         clearButton.setOnAction(e -> clearStudentFields());
 
         GridPane form = new GridPane();
+        form.getStyleClass().add("card-panel");
         form.setHgap(10);
         form.setVgap(10);
         form.add(new Label("ID:"), 0, 0);
@@ -166,9 +173,12 @@ public class AdminApp extends javafx.application.Application {
         form.add(clearButton, 1, 5);
 
         GridPane preview = new GridPane();
+        preview.getStyleClass().add("card-panel");
         preview.setHgap(12);
         preview.setVgap(8);
-        preview.add(new Label("Podglad aktualnego semestru"), 0, 0, 2, 1);
+        Label previewTitle = new Label("Podglad aktualnego semestru");
+        previewTitle.getStyleClass().add("section-title");
+        preview.add(previewTitle, 0, 0, 2, 1);
         preview.add(new Label("Semestr:"), 0, 1);
         preview.add(studentPreviewSemestrLabel, 1, 1);
         preview.add(new Label("Status:"), 0, 2);
@@ -177,12 +187,15 @@ public class AdminApp extends javafx.application.Application {
         preview.add(studentPreviewEctsLabel, 1, 3);
 
         HBox lowerSection = new HBox(30, form, preview);
-        VBox root = new VBox(15, new Label("Zarzadzanie studentami"), studentTable, lowerSection);
+        Label title = new Label("Zarzadzanie studentami");
+        title.getStyleClass().add("page-title");
+        VBox root = new VBox(15, title, studentTable, lowerSection);
+        root.getStyleClass().add("page-root");
         root.setPadding(new Insets(15));
-        return root;
+        return wrapScrollable(root);
     }
 
-    private VBox createPrzedmiotyTab() {
+    private ScrollPane createPrzedmiotyTab() {
         TableColumn<Przedmiot, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
@@ -219,6 +232,7 @@ public class AdminApp extends javafx.application.Application {
         clearButton.setOnAction(e -> clearPrzedmiotFields());
 
         GridPane form = new GridPane();
+        form.getStyleClass().add("card-panel");
         form.setHgap(10);
         form.setVgap(10);
         form.add(new Label("ID:"), 0, 0);
@@ -237,6 +251,7 @@ public class AdminApp extends javafx.application.Application {
         mappingSemestrCombo.valueProperty().addListener((obs, oldValue, value) -> odswiezPrzedmiotySemestruKonfiguracyjne());
 
         GridPane mappingForm = new GridPane();
+        mappingForm.getStyleClass().add("card-panel");
         mappingForm.setHgap(10);
         mappingForm.setVgap(10);
         mappingForm.add(new Label("Semestr:"), 0, 0);
@@ -257,17 +272,24 @@ public class AdminApp extends javafx.application.Application {
         semestrPrzedmiotTable.getColumns().setAll(mapNazwaCol, mapEctsCol, mapSemestrCol);
         semestrPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        HBox lowerSection = new HBox(30, form, new VBox(10, new Label("Konfiguracja semestru"), mappingForm, semestrPrzedmiotTable));
-        VBox root = new VBox(15, new Label("Przedmioty i przypisania do semestrow"), przedmiotTable, lowerSection);
+        Label mappingTitle = new Label("Konfiguracja semestru");
+        mappingTitle.getStyleClass().add("section-title");
+        VBox mappingBox = new VBox(10, mappingTitle, mappingForm, semestrPrzedmiotTable);
+        HBox lowerSection = new HBox(30, form, mappingBox);
+        Label title = new Label("Przedmioty i przypisania do semestrow");
+        title.getStyleClass().add("page-title");
+        VBox root = new VBox(15, title, przedmiotTable, lowerSection);
+        root.getStyleClass().add("page-root");
         root.setPadding(new Insets(15));
-        return root;
+        return wrapScrollable(root);
     }
 
-    private VBox createPrzebiegTab() {
+    private ScrollPane createPrzebiegTab() {
         workflowStudentCombo.valueProperty().addListener((obs, oldValue, student) -> updateWorkflowForStudent(student));
         workflowPreviewSemestrCombo.valueProperty().addListener((obs, oldValue, semestr) -> showSelectedPreviewSemester());
 
         GridPane selectionBox = new GridPane();
+        selectionBox.getStyleClass().add("card-panel");
         selectionBox.setHgap(10);
         selectionBox.setVgap(10);
         selectionBox.add(new Label("Student:"), 0, 0);
@@ -278,6 +300,7 @@ public class AdminApp extends javafx.application.Application {
         selectionBox.add(workflowPreviewSemestrCombo, 1, 2);
 
         GridPane summaryBox = new GridPane();
+        summaryBox.getStyleClass().add("card-panel");
         summaryBox.setHgap(12);
         summaryBox.setVgap(8);
         summaryBox.add(new Label("Aktualny semestr:"), 0, 0);
@@ -312,6 +335,8 @@ public class AdminApp extends javafx.application.Application {
 
         workflowCourseTable.getColumns().setAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         workflowCourseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        workflowCourseTable.setMinHeight(220);
+        workflowCourseTable.setPrefHeight(260);
 
         TableColumn<StudentCourseRecord, String> historyPrzedmiotCol = new TableColumn<>("Przedmiot");
         historyPrzedmiotCol.setCellValueFactory(new PropertyValueFactory<>("przedmiot"));
@@ -330,8 +355,11 @@ public class AdminApp extends javafx.application.Application {
 
         studentHistoryTable.getColumns().setAll(historyPrzedmiotCol, historySemestrCol, historyEctsCol, historyOcenaCol, historyStatusCol);
         studentHistoryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        studentHistoryTable.setMinHeight(220);
+        studentHistoryTable.setPrefHeight(260);
 
         GridPane gradeForm = new GridPane();
+        gradeForm.getStyleClass().add("card-panel");
         gradeForm.setHgap(10);
         gradeForm.setVgap(10);
         gradeForm.add(new Label("Przedmiot z aktualnego semestru:"), 0, 0);
@@ -351,22 +379,41 @@ public class AdminApp extends javafx.application.Application {
         zaliczRecznieButton.setOnAction(e -> zaliczSemestrRecznie());
         kolejnySemestrButton.setOnAction(e -> rejestrujNaKolejnySemestr());
 
-        HBox actions = new HBox(10, ustawSemestrButton, zapiszOceneButton, naprawButton, zaliczRecznieButton, kolejnySemestrButton);
+        FlowPane actions = new FlowPane();
+        actions.setHgap(10);
+        actions.setVgap(10);
+        actions.getChildren().addAll(
+                ustawSemestrButton,
+                zapiszOceneButton,
+                naprawButton,
+                zaliczRecznieButton,
+                kolejnySemestrButton
+        );
+
+        Label title = new Label("Workflow przebiegu studiow");
+        title.getStyleClass().add("page-title");
+        Label currentTitle = new Label("Przedmioty wybranego semestru");
+        currentTitle.getStyleClass().add("section-title");
+        Label historyTitle = new Label("Historia wszystkich przedmiotow studenta");
+        historyTitle.getStyleClass().add("section-title");
 
         VBox root = new VBox(
                 15,
-                new Label("Workflow przebiegu studiow"),
+                title,
                 selectionBox,
                 summaryBox,
-                new Label("Przedmioty wybranego semestru"),
+                currentTitle,
                 workflowCourseTable,
                 gradeForm,
                 actions,
-                new Label("Historia wszystkich przedmiotow studenta"),
+                historyTitle,
                 studentHistoryTable
         );
+        root.getStyleClass().add("page-root");
         root.setPadding(new Insets(15));
-        return root;
+        VBox.setVgrow(workflowCourseTable, Priority.ALWAYS);
+        VBox.setVgrow(studentHistoryTable, Priority.ALWAYS);
+        return wrapScrollable(root);
     }
 
     private void addStudent() {
@@ -791,6 +838,15 @@ public class AdminApp extends javafx.application.Application {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private ScrollPane wrapScrollable(VBox content) {
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPannable(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("page-scroll");
+        return scrollPane;
     }
 
     public static void main(String[] args) {

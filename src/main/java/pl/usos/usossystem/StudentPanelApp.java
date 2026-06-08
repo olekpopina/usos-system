@@ -6,10 +6,12 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import pl.usos.usossystem.model.SemesterProgressView;
@@ -80,21 +82,42 @@ public class StudentPanelApp {
         Button refreshButton = new Button("Odswiez dane");
         refreshButton.setOnAction(event -> refreshView());
 
+        Label title = new Label("Panel studenta");
+        title.getStyleClass().add("page-title");
+        summaryGrid.getStyleClass().add("card-panel");
+        Label currentTitle = new Label("Przedmioty aktualnego semestru");
+        currentTitle.getStyleClass().add("section-title");
+        Label historyTitle = new Label("Historia wszystkich przypisanych przedmiotow");
+        historyTitle.getStyleClass().add("section-title");
+
         VBox root = new VBox(
                 15,
-                new Label("Panel studenta"),
+                title,
                 summaryGrid,
                 refreshButton,
-                new Label("Przedmioty aktualnego semestru"),
+                currentTitle,
                 currentSemesterTable,
-                new Label("Historia wszystkich przypisanych przedmiotow"),
+                historyTitle,
                 historyTable
         );
+        root.getStyleClass().add("page-root");
         root.setPadding(new Insets(20));
+        VBox.setVgrow(currentSemesterTable, Priority.ALWAYS);
+        VBox.setVgrow(historyTable, Priority.ALWAYS);
 
         refreshView();
 
-        stage.setScene(new Scene(root, 980, 720));
+        ScrollPane scrollPane = new ScrollPane(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPannable(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("page-scroll");
+
+        Scene scene = new Scene(scrollPane, 980, 720);
+        AppTheme.apply(stage, scene);
+        stage.setScene(scene);
+        stage.setMinWidth(920);
+        stage.setMinHeight(700);
         stage.setTitle("Mini-USOS - Konto studenta");
         stage.show();
     }
@@ -117,6 +140,8 @@ public class StudentPanelApp {
 
         currentSemesterTable.getColumns().setAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         currentSemesterTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        currentSemesterTable.setMinHeight(220);
+        currentSemesterTable.setPrefHeight(260);
     }
 
     private void setupHistoryTable() {
@@ -137,6 +162,8 @@ public class StudentPanelApp {
 
         historyTable.getColumns().setAll(semestrCol, przedmiotCol, ectsCol, ocenaCol, statusCol);
         historyTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        historyTable.setMinHeight(220);
+        historyTable.setPrefHeight(260);
     }
 
     private void refreshView() {

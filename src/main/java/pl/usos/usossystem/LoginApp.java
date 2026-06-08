@@ -20,6 +20,7 @@ public class LoginApp extends Application {
     @Override
     public void start(Stage stage) {
         Label title = new Label("Logowanie do Mini-USOS");
+        title.getStyleClass().add("page-title");
 
         TextField loginField = new TextField();
         loginField.setPromptText("Login");
@@ -28,6 +29,7 @@ public class LoginApp extends Application {
         passwordField.setPromptText("Haslo");
 
         Button loginButton = new Button("Zaloguj");
+        loginButton.setDefaultButton(true);
 
         loginButton.setOnAction(e -> {
             String login = loginField.getText().trim();
@@ -63,9 +65,14 @@ public class LoginApp extends Application {
         });
 
         VBox root = new VBox(12, title, loginField, passwordField, loginButton);
+        root.getStyleClass().addAll("page-root", "card-panel");
         root.setPadding(new Insets(20));
 
-        stage.setScene(new Scene(root, 320, 220));
+        Scene scene = new Scene(root, 360, 240);
+        AppTheme.apply(stage, scene);
+        stage.setScene(scene);
+        stage.setMinWidth(360);
+        stage.setMinHeight(240);
         stage.setTitle("Logowanie");
         stage.show();
     }
