@@ -20,7 +20,8 @@ public class PrzedmiotRepository {
             while (rs.next()) {
                 przedmioty.add(new Przedmiot(
                         rs.getInt("id"),
-                        rs.getString("nazwa")
+                        rs.getString("nazwa"),
+                        rs.getInt("ects")
                 ));
             }
 
@@ -31,13 +32,46 @@ public class PrzedmiotRepository {
         return przedmioty;
     }
 
-    public void addPrzedmiot(String nazwa) {
-        String sql = "INSERT INTO przedmiot (nazwa) VALUES (?)";
+    public List<Przedmiot> getPrzedmiotyDlaSemestru(int semestrId) {
+        List<Przedmiot> przedmioty = new ArrayList<>();
+        String sql = """
+                SELECT p.id, p.nazwa, p.ects
+                FROM semestr_przedmiot sp
+                JOIN przedmiot p ON p.id = sp.przedmiot_id
+                WHERE sp.semestr_id = ?
+                ORDER BY p.nazwa
+                """;
+
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, semestrId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    przedmioty.add(new Przedmiot(
+                            rs.getInt("id"),
+                            rs.getString("nazwa"),
+                            rs.getInt("ects")
+                    ));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return przedmioty;
+    }
+
+    public void addPrzedmiot(String nazwa, int ects) {
+        String sql = "INSERT INTO przedmiot (nazwa, ects) VALUES (?, ?)";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, nazwa);
+            stmt.setInt(2, ects);
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -45,14 +79,15 @@ public class PrzedmiotRepository {
         }
     }
 
-    public void updatePrzedmiot(int id, String nazwa) {
-        String sql = "UPDATE przedmiot SET nazwa = ? WHERE id = ?";
+    public void updatePrzedmiot(int id, String nazwa, int ects) {
+        String sql = "UPDATE przedmiot SET nazwa = ?, ects = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, nazwa);
-            stmt.setInt(2, id);
+            stmt.setInt(2, ects);
+            stmt.setInt(3, id);
             stmt.executeUpdate();
 
         } catch (SQLException e) {

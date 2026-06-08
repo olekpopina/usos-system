@@ -11,4 +11,5 @@ module pl.usos.usossystem {
     exports pl.usos.usossystem.model;
     exports pl.usos.usossystem.config;
     exports pl.usos.usossystem.repository;
+    exports pl.usos.usossystem.service;
 }

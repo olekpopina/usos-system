@@ -134,6 +134,44 @@ public class StudentRepository {
         return null;
     }
 
+    public Student getStudentById(int studentId) {
+        String sql = """
+                SELECT s.id, s.imie, s.nazwisko, s.indeks, s.haslo,
+                       s.aktualny_semestr_id, s.status_semestru,
+                       sem.nazwa AS semestr_nazwa
+                FROM student s
+                LEFT JOIN semestr sem ON s.aktualny_semestr_id = sem.id
+                WHERE s.id = ?
+                """;
+
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, studentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Student student = new Student(
+                            rs.getInt("id"),
+                            rs.getString("imie"),
+                            rs.getString("nazwisko"),
+                            rs.getInt("indeks"),
+                            rs.getString("haslo"),
+                            (Integer) rs.getObject("aktualny_semestr_id"),
+                            rs.getString("status_semestru")
+                    );
+                    student.setAktualnySemestrNazwa(rs.getString("semestr_nazwa"));
+                    return student;
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
     public void setStudentSemestr(int studentId, int semestrId) {
         String sql = "UPDATE student SET aktualny_semestr_id = ?, status_semestru = 'W trakcie' WHERE id = ?";
 

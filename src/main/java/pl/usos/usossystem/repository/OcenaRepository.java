@@ -10,7 +10,11 @@ import java.util.List;
 public class OcenaRepository {
 
     public void addOcena(int studentId, int przedmiotId, int semestrId, double ocena) {
-        String sql = "INSERT INTO ocena (student_id, przedmiot_id, semestr_id, ocena) VALUES (?, ?, ?, ?)";
+        String sql = """
+                INSERT INTO ocena (student_id, przedmiot_id, semestr_id, ocena)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE ocena = VALUES(ocena)
+                """;
 
         try (Connection conn = DatabaseConnection.connect();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

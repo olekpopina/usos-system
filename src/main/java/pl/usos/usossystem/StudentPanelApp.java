@@ -38,6 +38,9 @@ public class StudentPanelApp {
         TableColumn<StudentPrzedmiotView, String> przedmiotCol = new TableColumn<>("Przedmiot");
         przedmiotCol.setCellValueFactory(new PropertyValueFactory<>("przedmiot"));
 
+        TableColumn<StudentPrzedmiotView, Integer> ectsCol = new TableColumn<>("ECTS");
+        ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
+
         TableColumn<StudentPrzedmiotView, String> semestrCol = new TableColumn<>("Semestr");
         semestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
 
@@ -50,7 +53,7 @@ public class StudentPanelApp {
         TableColumn<StudentPrzedmiotView, String> statusCol = new TableColumn<>("Przedmiot zaliczony");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        table.getColumns().addAll(przedmiotCol, semestrCol, ocenaCol, statusCol);
+        table.getColumns().addAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setItems(FXCollections.observableArrayList(
                 studentSemestrRepository.getStudentDashboardData(student.getId())

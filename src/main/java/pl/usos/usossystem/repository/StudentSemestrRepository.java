@@ -3,7 +3,10 @@ package pl.usos.usossystem.repository;
 import pl.usos.usossystem.config.DatabaseConnection;
 import pl.usos.usossystem.model.StudentPrzedmiotView;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,6 +52,7 @@ public class StudentSemestrRepository {
 
         String sql = """
                 SELECT p.nazwa AS przedmiot,
+                       p.ects,
                        sem.nazwa AS semestr,
                        o.ocena,
                        sp.zaliczony
@@ -67,15 +71,17 @@ public class StudentSemestrRepository {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, studentId);
-            ResultSet rs = stmt.executeQuery();
 
-            while (rs.next()) {
-                list.add(new StudentPrzedmiotView(
-                        rs.getString("przedmiot"),
-                        rs.getString("semestr"),
-                        (Double) rs.getObject("ocena"),
-                        rs.getBoolean("zaliczony")
-                ));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new StudentPrzedmiotView(
+                            rs.getString("przedmiot"),
+                            rs.getInt("ects"),
+                            rs.getString("semestr"),
+                            (Double) rs.getObject("ocena"),
+                            rs.getBoolean("zaliczony")
+                    ));
+                }
             }
 
         } catch (SQLException e) {
@@ -85,9 +91,10 @@ public class StudentSemestrRepository {
         return list;
     }
 
-    public boolean czyStudentMaWszystkieOcenyWSemestrze(int studentId, int semestrId) {
+    public List<Double> getOcenyStudentaWSemestrze(int studentId, int semestrId) {
+        List<Double> oceny = new ArrayList<>();
         String sql = """
-                SELECT COUNT(*) AS brak
+                SELECT o.ocena
                 FROM student_przedmiot sp
                 LEFT JOIN ocena o
                     ON o.student_id = sp.student_id
@@ -95,7 +102,7 @@ public class StudentSemestrRepository {
                    AND o.semestr_id = sp.semestr_id
                 WHERE sp.student_id = ?
                   AND sp.semestr_id = ?
-                  AND o.id IS NULL
+                ORDER BY sp.przedmiot_id
                 """;
 
         try (Connection conn = DatabaseConnection.connect();
@@ -104,26 +111,30 @@ public class StudentSemestrRepository {
             stmt.setInt(1, studentId);
             stmt.setInt(2, semestrId);
 
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("brak") == 0;
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    oceny.add((Double) rs.getObject("ocena"));
+                }
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
-        return false;
+        return oceny;
     }
 
-    public void oznaczPrzedmiotyJakoZaliczoneJesliMajaOceny(int studentId, int semestrId) {
+    public void synchronizujZaliczeniePrzedmiotow(int studentId, int semestrId) {
         String sql = """
                 UPDATE student_przedmiot sp
-                JOIN ocena o
+                LEFT JOIN ocena o
                   ON o.student_id = sp.student_id
                  AND o.przedmiot_id = sp.przedmiot_id
                  AND o.semestr_id = sp.semestr_id
-                SET sp.zaliczony = TRUE
+                SET sp.zaliczony = CASE
+                    WHEN o.ocena >= 3.0 THEN TRUE
+                    ELSE FALSE
+                END
                 WHERE sp.student_id = ? AND sp.semestr_id = ?
                 """;
 

@@ -5,7 +5,15 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
@@ -19,6 +27,10 @@ import pl.usos.usossystem.repository.PrzedmiotRepository;
 import pl.usos.usossystem.repository.SemestrRepository;
 import pl.usos.usossystem.repository.StudentRepository;
 import pl.usos.usossystem.repository.StudentSemestrRepository;
+import pl.usos.usossystem.service.SemesterCompletionService;
+import pl.usos.usossystem.service.SemesterDecision;
+
+import java.util.List;
 
 public class AdminApp extends Application {
 
@@ -27,9 +39,11 @@ public class AdminApp extends Application {
     private final SemestrRepository semestrRepository = new SemestrRepository();
     private final StudentSemestrRepository studentSemestrRepository = new StudentSemestrRepository();
     private final OcenaRepository ocenaRepository = new OcenaRepository();
+    private final SemesterCompletionService semesterCompletionService = new SemesterCompletionService();
 
     private final TableView<Student> studentTable = new TableView<>();
     private final TableView<Przedmiot> przedmiotTable = new TableView<>();
+    private final TableView<Przedmiot> semestrPrzedmiotTable = new TableView<>();
     private final TableView<StudentPrzedmiotView> studentPrzedmiotTable = new TableView<>();
 
     private final TextField studentIdField = new TextField();
@@ -39,6 +53,7 @@ public class AdminApp extends Application {
 
     private final TextField przedmiotIdField = new TextField();
     private final TextField przedmiotNazwaField = new TextField();
+    private final TextField przedmiotEctsField = new TextField();
 
     private final ComboBox<Student> studentCombo = new ComboBox<>();
     private final ComboBox<Semestr> semestrCombo = new ComboBox<>();
@@ -51,7 +66,7 @@ public class AdminApp extends Application {
 
         Tab studenciTab = new Tab("Studenci", createStudenciTab());
         Tab przedmiotyTab = new Tab("Przedmioty", createPrzedmiotyTab());
-        Tab etapTab = new Tab("Etap studiów", createEtapTab());
+        Tab etapTab = new Tab("Etap studiow", createEtapTab());
 
         studenciTab.setClosable(false);
         przedmiotyTab.setClosable(false);
@@ -61,7 +76,7 @@ public class AdminApp extends Application {
 
         refreshAll();
 
-        Scene scene = new Scene(tabPane, 1100, 760);
+        Scene scene = new Scene(tabPane, 1180, 820);
         stage.setTitle("Mini-USOS - Panel dziekanatu");
         stage.setScene(scene);
         stage.show();
@@ -71,7 +86,7 @@ public class AdminApp extends Application {
         TableColumn<Student, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
-        TableColumn<Student, String> imieCol = new TableColumn<>("Imię");
+        TableColumn<Student, String> imieCol = new TableColumn<>("Imie");
         imieCol.setCellValueFactory(new PropertyValueFactory<>("imie"));
 
         TableColumn<Student, String> nazwiskoCol = new TableColumn<>("Nazwisko");
@@ -103,8 +118,8 @@ public class AdminApp extends Application {
 
         Button addButton = new Button("Dodaj");
         Button updateButton = new Button("Edytuj");
-        Button deleteButton = new Button("Usuń");
-        Button clearButton = new Button("Wyczyść");
+        Button deleteButton = new Button("Usun");
+        Button clearButton = new Button("Wyczysc");
 
         addButton.setOnAction(e -> addStudent());
         updateButton.setOnAction(e -> updateStudent());
@@ -117,26 +132,18 @@ public class AdminApp extends Application {
 
         form.add(new Label("ID:"), 0, 0);
         form.add(studentIdField, 1, 0);
-
-        form.add(new Label("Imię:"), 0, 1);
+        form.add(new Label("Imie:"), 0, 1);
         form.add(imieField, 1, 1);
-
         form.add(new Label("Nazwisko:"), 0, 2);
         form.add(nazwiskoField, 1, 2);
-
         form.add(new Label("Indeks:"), 0, 3);
         form.add(indeksField, 1, 3);
-
         form.add(addButton, 0, 4);
         form.add(updateButton, 1, 4);
         form.add(deleteButton, 0, 5);
         form.add(clearButton, 1, 5);
 
-        VBox root = new VBox(15,
-                new Label("Zarządzanie studentami"),
-                studentTable,
-                form
-        );
+        VBox root = new VBox(15, new Label("Zarzadzanie studentami"), studentTable, form);
         root.setPadding(new Insets(15));
         return root;
     }
@@ -148,14 +155,18 @@ public class AdminApp extends Application {
         TableColumn<Przedmiot, String> nazwaCol = new TableColumn<>("Nazwa przedmiotu");
         nazwaCol.setCellValueFactory(new PropertyValueFactory<>("nazwa"));
 
+        TableColumn<Przedmiot, Integer> ectsCol = new TableColumn<>("ECTS");
+        ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
+
         przedmiotTable.getColumns().clear();
-        przedmiotTable.getColumns().addAll(idCol, nazwaCol);
+        przedmiotTable.getColumns().addAll(idCol, nazwaCol, ectsCol);
         przedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         przedmiotTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, selected) -> {
             if (selected != null) {
                 przedmiotIdField.setText(String.valueOf(selected.getId()));
                 przedmiotNazwaField.setText(selected.getNazwa());
+                przedmiotEctsField.setText(String.valueOf(selected.getEcts()));
             }
         });
 
@@ -163,8 +174,8 @@ public class AdminApp extends Application {
 
         Button addButton = new Button("Dodaj");
         Button updateButton = new Button("Edytuj");
-        Button deleteButton = new Button("Usuń");
-        Button clearButton = new Button("Wyczyść");
+        Button deleteButton = new Button("Usun");
+        Button clearButton = new Button("Wyczysc");
 
         addButton.setOnAction(e -> addPrzedmiot());
         updateButton.setOnAction(e -> updatePrzedmiot());
@@ -177,34 +188,30 @@ public class AdminApp extends Application {
 
         form.add(new Label("ID:"), 0, 0);
         form.add(przedmiotIdField, 1, 0);
-
         form.add(new Label("Nazwa:"), 0, 1);
         form.add(przedmiotNazwaField, 1, 1);
+        form.add(new Label("ECTS:"), 0, 2);
+        form.add(przedmiotEctsField, 1, 2);
+        form.add(addButton, 0, 3);
+        form.add(updateButton, 1, 3);
+        form.add(deleteButton, 0, 4);
+        form.add(clearButton, 1, 4);
 
-        form.add(addButton, 0, 2);
-        form.add(updateButton, 1, 2);
-        form.add(deleteButton, 0, 3);
-        form.add(clearButton, 1, 3);
-
-        VBox root = new VBox(15,
-                new Label("Zarządzanie przedmiotami"),
-                przedmiotTable,
-                form
-        );
+        VBox root = new VBox(15, new Label("Zarzadzanie przedmiotami"), przedmiotTable, form);
         root.setPadding(new Insets(15));
         return root;
     }
 
     private VBox createEtapTab() {
-        Label opis = new Label("Obsługa semestrów, ocen i rejestracji studenta");
+        Label opis = new Label("Obsluga semestrow, ocen i rejestracji studenta");
 
         Button ustawSemestrButton = new Button("Ustaw studentowi aktualny semestr");
         Button przypiszPrzedmiotDoSemestruButton = new Button("Przypisz przedmiot do semestru");
         Button przypiszPrzedmiotyStudentowiButton = new Button("Przypisz studentowi przedmioty z semestru");
-        Button dodajOceneButton = new Button("Dodaj ocenę");
-        Button zaliczRecznieButton = new Button("Zalicz semestr ręcznie");
+        Button dodajOceneButton = new Button("Dodaj lub popraw ocene");
+        Button zaliczRecznieButton = new Button("Zalicz semestr recznie");
         Button kolejnySemestrButton = new Button("Rejestruj na kolejny semestr");
-        Button pokazPrzedmiotyButton = new Button("Pokaż przedmioty studenta");
+        Button pokazPrzedmiotyButton = new Button("Pokaz przedmioty studenta");
 
         ustawSemestrButton.setOnAction(e -> ustawAktualnySemestrStudenta());
         przypiszPrzedmiotDoSemestruButton.setOnAction(e -> przypiszPrzedmiotDoSemestru());
@@ -214,22 +221,20 @@ public class AdminApp extends Application {
         kolejnySemestrButton.setOnAction(e -> rejestrujNaKolejnySemestr());
         pokazPrzedmiotyButton.setOnAction(e -> pokazPrzedmiotyStudenta());
 
+        semestrCombo.valueProperty().addListener((obs, oldVal, selected) -> odswiezPrzedmiotySemestru());
+
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
 
         form.add(new Label("Student:"), 0, 0);
         form.add(studentCombo, 1, 0);
-
         form.add(new Label("Semestr:"), 0, 1);
         form.add(semestrCombo, 1, 1);
-
         form.add(new Label("Przedmiot:"), 0, 2);
         form.add(przedmiotCombo, 1, 2);
-
         form.add(new Label("Ocena:"), 0, 3);
         form.add(ocenaField, 1, 3);
-
         form.add(ustawSemestrButton, 0, 4);
         form.add(przypiszPrzedmiotDoSemestruButton, 1, 4);
         form.add(przypiszPrzedmiotyStudentowiButton, 0, 5);
@@ -238,8 +243,21 @@ public class AdminApp extends Application {
         form.add(kolejnySemestrButton, 1, 6);
         form.add(pokazPrzedmiotyButton, 0, 7);
 
+        TableColumn<Przedmiot, String> semestrPrzedmiotCol = new TableColumn<>("Przedmiot semestru");
+        semestrPrzedmiotCol.setCellValueFactory(new PropertyValueFactory<>("nazwa"));
+
+        TableColumn<Przedmiot, Integer> semestrPrzedmiotEctsCol = new TableColumn<>("ECTS");
+        semestrPrzedmiotEctsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
+
+        semestrPrzedmiotTable.getColumns().clear();
+        semestrPrzedmiotTable.getColumns().addAll(semestrPrzedmiotCol, semestrPrzedmiotEctsCol);
+        semestrPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
         TableColumn<StudentPrzedmiotView, String> przedmiotCol = new TableColumn<>("Przedmiot");
         przedmiotCol.setCellValueFactory(new PropertyValueFactory<>("przedmiot"));
+
+        TableColumn<StudentPrzedmiotView, Integer> ectsCol = new TableColumn<>("ECTS");
+        ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
         TableColumn<StudentPrzedmiotView, String> semestrCol = new TableColumn<>("Semestr");
         semestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
@@ -254,10 +272,18 @@ public class AdminApp extends Application {
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
         studentPrzedmiotTable.getColumns().clear();
-        studentPrzedmiotTable.getColumns().addAll(przedmiotCol, semestrCol, ocenaCol, statusCol);
+        studentPrzedmiotTable.getColumns().addAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         studentPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        VBox root = new VBox(15, opis, form, new Label("Przedmioty i oceny wybranego studenta"), studentPrzedmiotTable);
+        VBox root = new VBox(
+                15,
+                opis,
+                form,
+                new Label("Przedmioty przypisane do wybranego semestru"),
+                semestrPrzedmiotTable,
+                new Label("Przedmioty i oceny wybranego studenta"),
+                studentPrzedmiotTable
+        );
         root.setPadding(new Insets(15));
         return root;
     }
@@ -268,7 +294,7 @@ public class AdminApp extends Application {
         String indeksText = indeksField.getText().trim();
 
         if (imie.isEmpty() || nazwisko.isEmpty() || indeksText.isEmpty()) {
-            showAlert("Błąd", "Wypełnij wszystkie pola studenta.");
+            showAlert("Blad", "Wypelnij wszystkie pola studenta.");
             return;
         }
 
@@ -278,13 +304,13 @@ public class AdminApp extends Application {
             refreshAll();
             clearStudentFields();
         } catch (NumberFormatException ex) {
-            showAlert("Błąd", "Indeks musi być liczbą.");
+            showAlert("Blad", "Indeks musi byc liczba.");
         }
     }
 
     private void updateStudent() {
         if (studentIdField.getText().isEmpty()) {
-            showAlert("Błąd", "Wybierz studenta z tabeli.");
+            showAlert("Blad", "Wybierz studenta z tabeli.");
             return;
         }
 
@@ -296,13 +322,13 @@ public class AdminApp extends Application {
             refreshAll();
             clearStudentFields();
         } catch (NumberFormatException ex) {
-            showAlert("Błąd", "Indeks musi być liczbą.");
+            showAlert("Blad", "Indeks musi byc liczba.");
         }
     }
 
     private void deleteStudent() {
         if (studentIdField.getText().isEmpty()) {
-            showAlert("Błąd", "Wybierz studenta z tabeli.");
+            showAlert("Blad", "Wybierz studenta z tabeli.");
             return;
         }
 
@@ -314,38 +340,52 @@ public class AdminApp extends Application {
 
     private void addPrzedmiot() {
         String nazwa = przedmiotNazwaField.getText().trim();
+        String ectsText = przedmiotEctsField.getText().trim();
 
-        if (nazwa.isEmpty()) {
-            showAlert("Błąd", "Wpisz nazwę przedmiotu.");
+        if (nazwa.isEmpty() || ectsText.isEmpty()) {
+            showAlert("Blad", "Wpisz nazwe przedmiotu i liczbe ECTS.");
             return;
         }
 
-        przedmiotRepository.addPrzedmiot(nazwa);
-        refreshAll();
-        clearPrzedmiotFields();
+        try {
+            int ects = Integer.parseInt(ectsText);
+            przedmiotRepository.addPrzedmiot(nazwa, ects);
+            refreshAll();
+            clearPrzedmiotFields();
+        } catch (NumberFormatException ex) {
+            showAlert("Blad", "ECTS musi byc liczba.");
+        }
     }
 
     private void updatePrzedmiot() {
         if (przedmiotIdField.getText().isEmpty()) {
-            showAlert("Błąd", "Wybierz przedmiot z tabeli.");
+            showAlert("Blad", "Wybierz przedmiot z tabeli.");
             return;
         }
 
         String nazwa = przedmiotNazwaField.getText().trim();
-        if (nazwa.isEmpty()) {
-            showAlert("Błąd", "Wpisz nazwę przedmiotu.");
+        String ectsText = przedmiotEctsField.getText().trim();
+
+        if (nazwa.isEmpty() || ectsText.isEmpty()) {
+            showAlert("Blad", "Wpisz nazwe przedmiotu i liczbe ECTS.");
             return;
         }
 
-        int id = Integer.parseInt(przedmiotIdField.getText());
-        przedmiotRepository.updatePrzedmiot(id, nazwa);
-        refreshAll();
-        clearPrzedmiotFields();
+        try {
+            int id = Integer.parseInt(przedmiotIdField.getText());
+            int ects = Integer.parseInt(ectsText);
+            przedmiotRepository.updatePrzedmiot(id, nazwa, ects);
+            refreshAll();
+            clearPrzedmiotFields();
+            odswiezPrzedmiotySemestru();
+        } catch (NumberFormatException ex) {
+            showAlert("Blad", "ECTS musi byc liczba.");
+        }
     }
 
     private void deletePrzedmiot() {
         if (przedmiotIdField.getText().isEmpty()) {
-            showAlert("Błąd", "Wybierz przedmiot z tabeli.");
+            showAlert("Blad", "Wybierz przedmiot z tabeli.");
             return;
         }
 
@@ -353,6 +393,7 @@ public class AdminApp extends Application {
         przedmiotRepository.deletePrzedmiot(id);
         refreshAll();
         clearPrzedmiotFields();
+        odswiezPrzedmiotySemestru();
     }
 
     private void ustawAktualnySemestrStudenta() {
@@ -360,7 +401,7 @@ public class AdminApp extends Application {
         Semestr semestr = semestrCombo.getValue();
 
         if (student == null || semestr == null) {
-            showAlert("Błąd", "Wybierz studenta i semestr.");
+            showAlert("Blad", "Wybierz studenta i semestr.");
             return;
         }
 
@@ -374,11 +415,12 @@ public class AdminApp extends Application {
         Przedmiot przedmiot = przedmiotCombo.getValue();
 
         if (semestr == null || przedmiot == null) {
-            showAlert("Błąd", "Wybierz semestr i przedmiot.");
+            showAlert("Blad", "Wybierz semestr i przedmiot.");
             return;
         }
 
         studentSemestrRepository.przypiszPrzedmiotDoSemestru(semestr.getId(), przedmiot.getId());
+        odswiezPrzedmiotySemestru();
         showInfo("OK", "Przedmiot przypisany do semestru.");
     }
 
@@ -387,13 +429,15 @@ public class AdminApp extends Application {
         Semestr semestr = semestrCombo.getValue();
 
         if (student == null || semestr == null) {
-            showAlert("Błąd", "Wybierz studenta i semestr.");
+            showAlert("Blad", "Wybierz studenta i semestr.");
             return;
         }
 
         studentSemestrRepository.przypiszPrzedmiotySemestruStudentowi(student.getId(), semestr.getId());
+        aktualizujStatusSemestru(student.getId(), semestr.getId());
+        refreshAll();
         pokazPrzedmiotyStudenta();
-        showInfo("OK", "Student otrzymał przedmioty z wybranego semestru.");
+        showInfo("OK", "Student otrzymal przedmioty z wybranego semestru.");
     }
 
     private void dodajOcene() {
@@ -403,7 +447,7 @@ public class AdminApp extends Application {
         String ocenaText = ocenaField.getText().trim();
 
         if (student == null || semestr == null || przedmiot == null || ocenaText.isEmpty()) {
-            showAlert("Błąd", "Wybierz studenta, semestr, przedmiot i wpisz ocenę.");
+            showAlert("Blad", "Wybierz studenta, semestr, przedmiot i wpisz ocene.");
             return;
         }
 
@@ -411,20 +455,15 @@ public class AdminApp extends Application {
             double ocena = Double.parseDouble(ocenaText);
 
             ocenaRepository.addOcena(student.getId(), przedmiot.getId(), semestr.getId(), ocena);
-
-            studentSemestrRepository.oznaczPrzedmiotyJakoZaliczoneJesliMajaOceny(student.getId(), semestr.getId());
-
-            boolean komplet = studentSemestrRepository.czyStudentMaWszystkieOcenyWSemestrze(student.getId(), semestr.getId());
-            if (komplet) {
-                studentRepository.setStatusSemestru(student.getId(), "Zaliczony automatycznie");
-            }
+            studentSemestrRepository.synchronizujZaliczeniePrzedmiotow(student.getId(), semestr.getId());
+            aktualizujStatusSemestru(student.getId(), semestr.getId());
 
             refreshAll();
             pokazPrzedmiotyStudenta();
             ocenaField.clear();
-            showInfo("OK", "Dodano ocenę.");
+            showInfo("OK", "Zapisano ocene.");
         } catch (NumberFormatException ex) {
-            showAlert("Błąd", "Ocena musi być liczbą.");
+            showAlert("Blad", "Ocena musi byc liczba.");
         }
     }
 
@@ -433,13 +472,13 @@ public class AdminApp extends Application {
         Semestr semestr = semestrCombo.getValue();
 
         if (student == null || semestr == null) {
-            showAlert("Błąd", "Wybierz studenta i semestr.");
+            showAlert("Blad", "Wybierz studenta i semestr.");
             return;
         }
 
-        studentRepository.setStatusSemestru(student.getId(), "Zaliczony ręcznie");
+        studentRepository.setStatusSemestru(student.getId(), "Zaliczony");
         refreshAll();
-        showInfo("OK", "Semestr oznaczono jako zaliczony ręcznie.");
+        showInfo("OK", "Semestr oznaczono jako zaliczony recznie.");
     }
 
     private void rejestrujNaKolejnySemestr() {
@@ -447,25 +486,18 @@ public class AdminApp extends Application {
         Semestr current = semestrCombo.getValue();
 
         if (student == null || current == null) {
-            showAlert("Błąd", "Wybierz studenta i aktualny semestr.");
+            showAlert("Blad", "Wybierz studenta i aktualny semestr.");
             return;
         }
 
-        boolean komplet = studentSemestrRepository.czyStudentMaWszystkieOcenyWSemestrze(student.getId(), current.getId());
+        List<Double> grades = studentSemestrRepository.getOcenyStudentaWSemestrze(student.getId(), current.getId());
+        SemesterDecision decision = semesterCompletionService.evaluateSemester(grades);
+        Student aktualnyStudent = studentRepository.getStudentById(student.getId());
+        boolean manualOverride = aktualnyStudent != null && "Zaliczony".equals(aktualnyStudent.getStatusSemestru());
 
-        if (komplet) {
-            studentRepository.setStatusSemestru(student.getId(), "Zaliczony automatycznie");
-        } else {
-            Student aktualnyStudent = studentRepository.getAllStudents().stream()
-                    .filter(s -> s.getId() == student.getId())
-                    .findFirst()
-                    .orElse(null);
-
-            if (aktualnyStudent == null || aktualnyStudent.getStatusSemestru() == null ||
-                    !aktualnyStudent.getStatusSemestru().equals("Zaliczony ręcznie")) {
-                showAlert("Błąd", "Student nie ma kompletu ocen ani ręcznie zaliczonego semestru.");
-                return;
-            }
+        if (!semesterCompletionService.canRegisterNextSemester(decision) && !manualOverride) {
+            showAlert("Blad", "Student nie spelnia warunkow rejestracji na kolejny semestr.");
+            return;
         }
 
         Semestr next = semestrRepository.getNextSemestr(current.getNumer());
@@ -479,22 +511,38 @@ public class AdminApp extends Application {
 
         refreshAll();
         pokazPrzedmiotyStudenta();
-        showInfo("OK", "Student został zarejestrowany na kolejny semestr: " + next.getNazwa());
+        showInfo("OK", "Student zostal zarejestrowany na kolejny semestr: " + next.getNazwa());
     }
 
     private void pokazPrzedmiotyStudenta() {
         Student student = studentCombo.getValue();
 
         if (student == null) {
-            showAlert("Błąd", "Wybierz studenta.");
+            showAlert("Blad", "Wybierz studenta.");
             return;
         }
 
         studentPrzedmiotTable.setItems(
-                FXCollections.observableArrayList(
-                        studentSemestrRepository.getStudentDashboardData(student.getId())
-                )
+                FXCollections.observableArrayList(studentSemestrRepository.getStudentDashboardData(student.getId()))
         );
+    }
+
+    private void odswiezPrzedmiotySemestru() {
+        Semestr semestr = semestrCombo.getValue();
+        if (semestr == null) {
+            semestrPrzedmiotTable.setItems(FXCollections.observableArrayList());
+            return;
+        }
+
+        semestrPrzedmiotTable.setItems(
+                FXCollections.observableArrayList(przedmiotRepository.getPrzedmiotyDlaSemestru(semestr.getId()))
+        );
+    }
+
+    private void aktualizujStatusSemestru(int studentId, int semestrId) {
+        List<Double> grades = studentSemestrRepository.getOcenyStudentaWSemestrze(studentId, semestrId);
+        String status = grades.isEmpty() ? "W trakcie" : semesterCompletionService.getStatusForStudent(grades);
+        studentRepository.setStatusSemestru(studentId, status);
     }
 
     private void refreshAll() {
@@ -504,6 +552,7 @@ public class AdminApp extends Application {
         studentCombo.setItems(FXCollections.observableArrayList(studentRepository.getAllStudents()));
         semestrCombo.setItems(FXCollections.observableArrayList(semestrRepository.getAllSemestry()));
         przedmiotCombo.setItems(FXCollections.observableArrayList(przedmiotRepository.getAllPrzedmioty()));
+        odswiezPrzedmiotySemestru();
     }
 
     private void clearStudentFields() {
@@ -517,6 +566,7 @@ public class AdminApp extends Application {
     private void clearPrzedmiotFields() {
         przedmiotIdField.clear();
         przedmiotNazwaField.clear();
+        przedmiotEctsField.clear();
         przedmiotTable.getSelectionModel().clearSelection();
     }
 
