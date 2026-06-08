@@ -54,6 +54,31 @@ Skrypt dodaje kilka kont testowych z roznymi statusami:
 - student warunkowy
 - student z wiecej niz jednym dlugiem
 
+## Reset bazy danych
+
+Jesli komus baza "rozjechala sie" po starszych wersjach projektu, najprosciej wyczyscic ja i odtworzyc od zera:
+
+### Wariant 1: Python
+
+```powershell
+python scripts/reset_database.py --force
+```
+
+Jesli od razu chcesz dorzucic dane testowe:
+
+```powershell
+python scripts/reset_database.py --force --seed
+```
+
+### Wariant 2: gotowe pliki .bat
+
+- `scripts\reset_db.bat` - resetuje baze od zera
+- `scripts\reset_db_with_seed.bat` - resetuje baze i od razu dodaje dane testowe
+
+W obu przypadkach trzeba miec:
+- uruchomiony MySQL Server
+- zainstalowany pakiet `mysql-connector-python`
+
 ## Logowanie
 
 - admin: `admin` / `admin`
