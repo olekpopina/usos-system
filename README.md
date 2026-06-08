@@ -47,12 +47,12 @@ pip install mysql-connector-python
 python scripts/seed_test_data.py
 ```
 
-Skrypt dodaje 8 kont testowych z roznymi statusami:
+Skrypt dodaje 16 kont testowych z roznymi statusami:
 - student z kompletem ocen
 - student warunkowy
 - student niezaliczony
 - student w trakcie z brakujaca ocena
-- dane na semestrze 1 i 2
+- dane rozlozone na semestrach 1-6
 
 ## Reset bazy danych
 
@@ -93,14 +93,17 @@ W obu przypadkach trzeba miec:
 4. W zakladce `Przebieg studiow` wybierz studenta i ustaw mu aktualny semestr.
 5. Aplikacja automatycznie przypisze studentowi wszystkie wymagane przedmioty tego semestru.
 6. Wpisuj oceny dla przedmiotow z aktualnego semestru.
-7. System sam przelicza ECTS, status semestru i mozliwosc rejestracji na kolejny semestr.
-8. Dla statusu `Zaliczony` albo `Warunkowy` mozna zarejestrowac studenta na kolejny semestr.
+7. Gdy wszystkie przedmioty aktualnego semestru sa zaliczone, system automatycznie przeniesie studenta na kolejny semestr, ale tylko wtedy, gdy ten kolejny semestr ma juz skonfigurowane przedmioty.
+8. Dla statusu `Warunkowy` albo w sytuacjach awaryjnych mozna dalej uzyc recznego przycisku rejestracji na kolejny semestr.
 
 ## Co zostalo dodane
 
 - ECTS w przedmiotach
 - automatyczne przypisanie studentowi przedmiotow po ustawieniu aktualnego semestru
+- automatyczny awans na kolejny semestr po zaliczeniu wszystkich przedmiotow, bez przeskakiwania przez puste semestry
 - przypisanie przedmiotow do semestrow z widokiem w panelu admina
+- kolumny z semestrem / semestrami w tabelach przedmiotow
+- wieksza baza przedmiotow na wszystkie 6 semestrow
 - logika zaliczenia semestru:
   - brak wszystkich ocen -> `W trakcie`
   - 0 dlugow -> `Zaliczony`

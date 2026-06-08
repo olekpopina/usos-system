@@ -30,6 +30,10 @@ import pl.usos.usossystem.repository.StudentSemestrRepository;
 import pl.usos.usossystem.service.SemesterCompletionService;
 import pl.usos.usossystem.service.SemesterWorkflowService;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 public class AdminApp extends javafx.application.Application {
 
     private final StudentRepository studentRepository = new StudentRepository();
@@ -62,6 +66,7 @@ public class AdminApp extends javafx.application.Application {
 
     private final ComboBox<Student> workflowStudentCombo = new ComboBox<>();
     private final ComboBox<Semestr> workflowSemestrCombo = new ComboBox<>();
+    private final ComboBox<Semestr> workflowPreviewSemestrCombo = new ComboBox<>();
     private final ComboBox<StudentCourseRecord> workflowCourseCombo = new ComboBox<>();
     private final TextField workflowOcenaField = new TextField();
 
@@ -187,7 +192,10 @@ public class AdminApp extends javafx.application.Application {
         TableColumn<Przedmiot, Integer> ectsCol = new TableColumn<>("ECTS");
         ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
-        przedmiotTable.getColumns().setAll(idCol, nazwaCol, ectsCol);
+        TableColumn<Przedmiot, String> semestryCol = new TableColumn<>("Semestry");
+        semestryCol.setCellValueFactory(new PropertyValueFactory<>("semestry"));
+
+        przedmiotTable.getColumns().setAll(idCol, nazwaCol, ectsCol, semestryCol);
         przedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         przedmiotTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, przedmiot) -> {
             if (przedmiot == null) {
@@ -243,7 +251,10 @@ public class AdminApp extends javafx.application.Application {
         TableColumn<Przedmiot, Integer> mapEctsCol = new TableColumn<>("ECTS");
         mapEctsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
-        semestrPrzedmiotTable.getColumns().setAll(mapNazwaCol, mapEctsCol);
+        TableColumn<Przedmiot, String> mapSemestrCol = new TableColumn<>("Semestr");
+        mapSemestrCol.setCellValueFactory(new PropertyValueFactory<>("semestry"));
+
+        semestrPrzedmiotTable.getColumns().setAll(mapNazwaCol, mapEctsCol, mapSemestrCol);
         semestrPrzedmiotTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         HBox lowerSection = new HBox(30, form, new VBox(10, new Label("Konfiguracja semestru"), mappingForm, semestrPrzedmiotTable));
@@ -254,6 +265,7 @@ public class AdminApp extends javafx.application.Application {
 
     private VBox createPrzebiegTab() {
         workflowStudentCombo.valueProperty().addListener((obs, oldValue, student) -> updateWorkflowForStudent(student));
+        workflowPreviewSemestrCombo.valueProperty().addListener((obs, oldValue, semestr) -> showSelectedPreviewSemester());
 
         GridPane selectionBox = new GridPane();
         selectionBox.setHgap(10);
@@ -262,6 +274,8 @@ public class AdminApp extends javafx.application.Application {
         selectionBox.add(workflowStudentCombo, 1, 0);
         selectionBox.add(new Label("Semestr do ustawienia:"), 0, 1);
         selectionBox.add(workflowSemestrCombo, 1, 1);
+        selectionBox.add(new Label("Semestr do podgladu:"), 0, 2);
+        selectionBox.add(workflowPreviewSemestrCombo, 1, 2);
 
         GridPane summaryBox = new GridPane();
         summaryBox.setHgap(12);
@@ -287,13 +301,16 @@ public class AdminApp extends javafx.application.Application {
         TableColumn<StudentCourseRecord, Integer> ectsCol = new TableColumn<>("ECTS");
         ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
+        TableColumn<StudentCourseRecord, String> semestrCol = new TableColumn<>("Semestr");
+        semestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
+
         TableColumn<StudentCourseRecord, Double> ocenaCol = new TableColumn<>("Ocena");
         ocenaCol.setCellValueFactory(new PropertyValueFactory<>("ocena"));
 
         TableColumn<StudentCourseRecord, String> statusCol = new TableColumn<>("Zaliczony");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        workflowCourseTable.getColumns().setAll(przedmiotCol, ectsCol, ocenaCol, statusCol);
+        workflowCourseTable.getColumns().setAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         workflowCourseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<StudentCourseRecord, String> historyPrzedmiotCol = new TableColumn<>("Przedmiot");
@@ -341,7 +358,7 @@ public class AdminApp extends javafx.application.Application {
                 new Label("Workflow przebiegu studiow"),
                 selectionBox,
                 summaryBox,
-                new Label("Przedmioty aktualnego semestru"),
+                new Label("Przedmioty wybranego semestru"),
                 workflowCourseTable,
                 gradeForm,
                 actions,
@@ -591,12 +608,19 @@ public class AdminApp extends javafx.application.Application {
             return;
         }
 
-        SemesterProgressView progressView = workflowService.getCurrentSemesterProgress(student.getId());
-        showWorkflowProgress(progressView);
+        SemesterProgressView currentProgress = workflowService.getCurrentSemesterProgress(student.getId());
+        List<StudentCourseRecord> history = workflowService.getStudentCourseHistory(student.getId());
+        populateWorkflowPreviewSemesters(student, history, currentProgress);
+        populateWorkflowEditorCourses(currentProgress);
 
         if (student.getAktualnySemestrId() != null) {
             workflowSemestrCombo.setValue(findSemestrById(student.getAktualnySemestrId()));
         }
+
+        if (workflowPreviewSemestrCombo.getValue() == null && currentProgress.getSemestrId() > 0) {
+            workflowPreviewSemestrCombo.setValue(findWorkflowPreviewSemestrById(currentProgress.getSemestrId()));
+        }
+        showSelectedPreviewSemester();
     }
 
     private void showWorkflowProgress(SemesterProgressView progressView) {
@@ -608,13 +632,54 @@ public class AdminApp extends javafx.application.Application {
         workflowMissingLabel.setText(String.valueOf(progressView.getMissingGradesCount()));
         workflowCanRegisterLabel.setText(progressView.getCanRegisterLabel());
         workflowCourseTable.setItems(FXCollections.observableArrayList(progressView.getCourseRecords()));
-        workflowCourseCombo.setItems(FXCollections.observableArrayList(progressView.getCourseRecords()));
 
         Student selectedStudent = workflowStudentCombo.getValue();
         if (selectedStudent != null) {
             studentHistoryTable.setItems(FXCollections.observableArrayList(workflowService.getStudentCourseHistory(selectedStudent.getId())));
             updateStudentPreview(selectedStudent);
         }
+    }
+
+    private void showSelectedPreviewSemester() {
+        Student student = workflowStudentCombo.getValue();
+        Semestr selectedPreview = workflowPreviewSemestrCombo.getValue();
+        if (student == null || selectedPreview == null) {
+            workflowCourseTable.setItems(FXCollections.observableArrayList());
+            return;
+        }
+
+        SemesterProgressView progressView = workflowService.getSemesterProgress(student.getId(), selectedPreview.getId());
+        showWorkflowProgress(progressView);
+    }
+
+    private void populateWorkflowPreviewSemesters(Student student, List<StudentCourseRecord> history, SemesterProgressView currentProgress) {
+        Set<Integer> semesterIds = new LinkedHashSet<>();
+        for (StudentCourseRecord record : history) {
+            semesterIds.add(record.getSemestrId());
+        }
+        if (student.getAktualnySemestrId() != null) {
+            semesterIds.add(student.getAktualnySemestrId());
+        }
+        if (currentProgress.getSemestrId() > 0) {
+            semesterIds.add(currentProgress.getSemestrId());
+        }
+
+        List<Semestr> availableSemesters = semestrRepository.getAllSemestry().stream()
+                .filter(semestr -> semesterIds.contains(semestr.getId()))
+                .toList();
+
+        Integer selectedPreviewId = workflowPreviewSemestrCombo.getValue() == null
+                ? null
+                : workflowPreviewSemestrCombo.getValue().getId();
+        workflowPreviewSemestrCombo.setItems(FXCollections.observableArrayList(availableSemesters));
+
+        if (selectedPreviewId != null) {
+            workflowPreviewSemestrCombo.setValue(findWorkflowPreviewSemestrById(selectedPreviewId));
+        }
+    }
+
+    private void populateWorkflowEditorCourses(SemesterProgressView currentProgress) {
+        workflowCourseCombo.setItems(FXCollections.observableArrayList(currentProgress.getCourseRecords()));
     }
 
     private void clearWorkflowView() {
@@ -627,6 +692,7 @@ public class AdminApp extends javafx.application.Application {
         workflowCanRegisterLabel.setText("-");
         workflowCourseTable.setItems(FXCollections.observableArrayList());
         workflowCourseCombo.setItems(FXCollections.observableArrayList());
+        workflowPreviewSemestrCombo.setItems(FXCollections.observableArrayList());
         studentHistoryTable.setItems(FXCollections.observableArrayList());
     }
 
@@ -687,6 +753,13 @@ public class AdminApp extends javafx.application.Application {
                         .filter(semestr -> semestr.getId() == semestrId)
                         .findFirst()
                         .orElse(null));
+    }
+
+    private Semestr findWorkflowPreviewSemestrById(int semestrId) {
+        return workflowPreviewSemestrCombo.getItems().stream()
+                .filter(semestr -> semestr.getId() == semestrId)
+                .findFirst()
+                .orElse(null);
     }
 
     private void clearStudentFields() {

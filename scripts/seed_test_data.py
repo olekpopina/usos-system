@@ -42,6 +42,14 @@ TEST_STUDENTS = [
     StudentSeed(910006, "Ola", "Kaminska", 2, [5.0, 2.0, 3.0]),
     StudentSeed(910007, "Tomasz", "Zielinski", 2, [2.0, 2.0, 4.0]),
     StudentSeed(910008, "Julia", "Mazur", 2, [4.0, None, 5.0]),
+    StudentSeed(910009, "Michal", "Dudek", 3, [4.0, 3.0, 5.0]),
+    StudentSeed(910010, "Karolina", "Sikora", 3, [5.0, 2.0, 4.0]),
+    StudentSeed(910011, "Pawel", "Adamski", 4, [3.0, 3.5, 4.0]),
+    StudentSeed(910012, "Natalia", "Kurek", 4, [2.0, 2.0, 5.0]),
+    StudentSeed(910013, "Damian", "Grabowski", 5, [4.0, 4.5, 5.0]),
+    StudentSeed(910014, "Sandra", "Krupa", 5, [5.0, None, 3.0]),
+    StudentSeed(910015, "Mateusz", "Baran", 6, [4.0, 3.0, 5.0]),
+    StudentSeed(910016, "Weronika", "Lis", 6, [5.0, 2.0, 3.0]),
 ]
 
 
@@ -160,7 +168,7 @@ def main() -> int:
                         )
 
         connection.commit()
-        print("Dodano 8 testowych studentow i oceny do usos_db.")
+        print("Dodano 16 testowych studentow i oceny do usos_db.")
         return 0
 
     except Exception as exc:  # pragma: no cover - local helper script

@@ -148,6 +148,27 @@ public class StudentSemestrRepository implements StudentSemesterGateway {
     }
 
     @Override
+    public int countConfiguredSubjectsForSemester(int semestrId) {
+        String sql = "SELECT COUNT(*) FROM semestr_przedmiot WHERE semestr_id = ?";
+
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, semestrId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
+    @Override
     public void synchronizujZaliczeniePrzedmiotow(int studentId, int semestrId) {
         String sql = """
                 UPDATE student_przedmiot sp

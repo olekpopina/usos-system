@@ -44,7 +44,16 @@ public class SemesterWorkflowService {
     public SemesterProgressView saveGradeAndRecalculate(int studentId, int semestrId, int przedmiotId, double ocena) {
         gradeGateway.addOcena(studentId, przedmiotId, semestrId, ocena);
         studentSemesterGateway.synchronizujZaliczeniePrzedmiotow(studentId, semestrId);
-        return recalculateAndPersist(studentId, semestrId);
+        SemesterProgressView progressView = recalculateAndPersist(studentId, semestrId);
+
+        if (progressView.getStatus() == SemesterStatus.ZALICZONY) {
+            SemesterProgressView autoAdvanced = tryAutoAdvanceToNextSemester(studentId, semestrId);
+            if (autoAdvanced != null) {
+                return autoAdvanced;
+            }
+        }
+
+        return progressView;
     }
 
     public SemesterProgressView markCurrentSemesterPassedManually(int studentId) {
@@ -78,6 +87,11 @@ public class SemesterWorkflowService {
         return buildProgressView(studentId, student.getAktualnySemestrId());
     }
 
+    public SemesterProgressView getSemesterProgress(int studentId, int semestrId) {
+        requireStudent(studentId);
+        return buildProgressView(studentId, semestrId);
+    }
+
     public SemesterProgressView registerForNextSemester(int studentId) {
         Student student = requireStudent(studentId);
         if (student.getAktualnySemestrId() == null) {
@@ -97,6 +111,9 @@ public class SemesterWorkflowService {
         Semestr nextSemestr = semesterGateway.getNextSemestr(currentSemestr.getNumer());
         if (nextSemestr == null) {
             throw new IllegalStateException("Brak kolejnego semestru w bazie.");
+        }
+        if (studentSemesterGateway.countConfiguredSubjectsForSemester(nextSemestr.getId()) == 0) {
+            throw new IllegalStateException("Kolejny semestr nie ma jeszcze przypisanych przedmiotow w systemie.");
         }
 
         return assignCurrentSemester(studentId, nextSemestr.getId());
@@ -154,5 +171,22 @@ public class SemesterWorkflowService {
             throw new IllegalStateException("Nie znaleziono studenta.");
         }
         return student;
+    }
+
+    private SemesterProgressView tryAutoAdvanceToNextSemester(int studentId, int currentSemestrId) {
+        Semestr currentSemestr = semesterGateway.getSemestrById(currentSemestrId);
+        if (currentSemestr == null) {
+            return null;
+        }
+
+        Semestr nextSemestr = semesterGateway.getNextSemestr(currentSemestr.getNumer());
+        if (nextSemestr == null) {
+            return null;
+        }
+        if (studentSemesterGateway.countConfiguredSubjectsForSemester(nextSemestr.getId()) == 0) {
+            return null;
+        }
+
+        return assignCurrentSemester(studentId, nextSemestr.getId());
     }
 }

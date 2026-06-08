@@ -67,8 +67,9 @@ class SemesterWorkflowServiceTest {
         workflowService.saveGradeAndRecalculate(1, 1, 102, 3.0);
         SemesterProgressView progressView = workflowService.saveGradeAndRecalculate(1, 1, 103, 5.0);
 
-        assertEquals(SemesterStatus.ZALICZONY, progressView.getStatus());
-        assertTrue(progressView.isCanRegisterNextSemester());
+        assertEquals("Semestr 2", progressView.getSemestrNazwa());
+        assertEquals(SemesterStatus.W_TRAKCIE, progressView.getStatus());
+        assertEquals(2, studentGateway.getStudentById(1).getAktualnySemestrId());
     }
 
     @Test
@@ -167,6 +168,19 @@ class SemesterWorkflowServiceTest {
         workflowService.saveGradeAndRecalculate(1, 2, 202, 4.0);
 
         assertThrows(IllegalStateException.class, () -> workflowService.registerForNextSemester(1));
+    }
+
+    @Test
+    void allPassedSubjectsDoNotAutoAdvanceWhenNextSemesterHasNoConfiguredSubjects() {
+        workflowService.assignCurrentSemester(1, 1);
+        studentSemesterGateway.clearRequiredCoursesForSemester(2);
+        workflowService.saveGradeAndRecalculate(1, 1, 101, 4.0);
+        workflowService.saveGradeAndRecalculate(1, 1, 102, 3.0);
+        SemesterProgressView progressView = workflowService.saveGradeAndRecalculate(1, 1, 103, 5.0);
+
+        assertEquals("Semestr 1", progressView.getSemestrNazwa());
+        assertEquals(SemesterStatus.ZALICZONY, progressView.getStatus());
+        assertEquals(1, studentGateway.getStudentById(1).getAktualnySemestrId());
     }
 
     private static class FakeStudentGateway implements StudentGateway {
@@ -319,6 +333,15 @@ class SemesterWorkflowServiceTest {
                     .filter(record -> !(record.getSemestrId() == semestrId && record.getPrzedmiotId() == przedmiotId))
                     .toList();
             studentCourses.put(studentId, new ArrayList<>(updated));
+        }
+
+        @Override
+        public int countConfiguredSubjectsForSemester(int semestrId) {
+            return requiredCourses.getOrDefault(semestrId, List.of()).size();
+        }
+
+        void clearRequiredCoursesForSemester(int semestrId) {
+            requiredCourses.put(semestrId, new ArrayList<>());
         }
     }
 

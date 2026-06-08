@@ -106,13 +106,16 @@ public class StudentPanelApp {
         TableColumn<StudentCourseRecord, Integer> ectsCol = new TableColumn<>("ECTS");
         ectsCol.setCellValueFactory(new PropertyValueFactory<>("ects"));
 
+        TableColumn<StudentCourseRecord, String> semestrCol = new TableColumn<>("Semestr");
+        semestrCol.setCellValueFactory(new PropertyValueFactory<>("semestr"));
+
         TableColumn<StudentCourseRecord, String> ocenaCol = new TableColumn<>("Ocena");
         ocenaCol.setCellValueFactory(cell -> formatGrade(cell.getValue().getOcena()));
 
         TableColumn<StudentCourseRecord, String> statusCol = new TableColumn<>("Zaliczony");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        currentSemesterTable.getColumns().setAll(przedmiotCol, ectsCol, ocenaCol, statusCol);
+        currentSemesterTable.getColumns().setAll(przedmiotCol, ectsCol, semestrCol, ocenaCol, statusCol);
         currentSemesterTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 

@@ -12,4 +12,6 @@ public interface StudentSemesterGateway {
     List<StudentCourseRecord> getStudentCourseRecords(int studentId);
 
     List<StudentCourseRecord> getStudentCourseRecordsForSemester(int studentId, int semestrId);
+
+    int countConfiguredSubjectsForSemester(int semestrId);
 }

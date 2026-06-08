@@ -11,7 +11,17 @@ public class PrzedmiotRepository {
 
     public List<Przedmiot> getAllPrzedmioty() {
         List<Przedmiot> przedmioty = new ArrayList<>();
-        String sql = "SELECT * FROM przedmiot ORDER BY id";
+        String sql = """
+                SELECT p.id,
+                       p.nazwa,
+                       p.ects,
+                       COALESCE(GROUP_CONCAT(s.nazwa ORDER BY s.numer SEPARATOR ', '), '-') AS semestry
+                FROM przedmiot p
+                LEFT JOIN semestr_przedmiot sp ON sp.przedmiot_id = p.id
+                LEFT JOIN semestr s ON s.id = sp.semestr_id
+                GROUP BY p.id, p.nazwa, p.ects
+                ORDER BY p.id
+                """;
 
         try (Connection conn = DatabaseConnection.connect();
              Statement stmt = conn.createStatement();
@@ -21,7 +31,8 @@ public class PrzedmiotRepository {
                 przedmioty.add(new Przedmiot(
                         rs.getInt("id"),
                         rs.getString("nazwa"),
-                        rs.getInt("ects")
+                        rs.getInt("ects"),
+                        rs.getString("semestry")
                 ));
             }
 
@@ -35,9 +46,10 @@ public class PrzedmiotRepository {
     public List<Przedmiot> getPrzedmiotyDlaSemestru(int semestrId) {
         List<Przedmiot> przedmioty = new ArrayList<>();
         String sql = """
-                SELECT p.id, p.nazwa, p.ects
+                SELECT p.id, p.nazwa, p.ects, sem.nazwa AS semestry
                 FROM semestr_przedmiot sp
                 JOIN przedmiot p ON p.id = sp.przedmiot_id
+                JOIN semestr sem ON sem.id = sp.semestr_id
                 WHERE sp.semestr_id = ?
                 ORDER BY p.nazwa
                 """;
@@ -52,7 +64,8 @@ public class PrzedmiotRepository {
                     przedmioty.add(new Przedmiot(
                             rs.getInt("id"),
                             rs.getString("nazwa"),
-                            rs.getInt("ects")
+                            rs.getInt("ects"),
+                            rs.getString("semestry")
                     ));
                 }
             }

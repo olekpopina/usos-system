@@ -100,7 +100,19 @@ INSERT INTO przedmiot (nazwa, ects) VALUES
     ('Bazy danych', 5),
     ('Algorytmy', 4),
     ('Sieci komputerowe', 4),
-    ('Inzynieria oprogramowania', 5)
+    ('Inzynieria oprogramowania', 5),
+    ('Statystyka', 4),
+    ('Systemy operacyjne', 5),
+    ('Architektura komputerow', 4),
+    ('Java', 5),
+    ('Analiza matematyczna', 6),
+    ('Metody numeryczne', 4),
+    ('Aplikacje webowe', 5),
+    ('Programowanie mobilne', 4),
+    ('Bezpieczenstwo sieci', 4),
+    ('Sztuczna inteligencja', 5),
+    ('Hurtownie danych', 4),
+    ('Projekt zespolowy', 6)
 ON DUPLICATE KEY UPDATE
     ects = VALUES(ects);
 
@@ -110,5 +122,9 @@ FROM semestr s
 JOIN przedmiot p
 WHERE (s.numer = 1 AND p.nazwa IN ('Matematyka', 'Programowanie', 'Bazy danych'))
    OR (s.numer = 2 AND p.nazwa IN ('Algorytmy', 'Sieci komputerowe', 'Inzynieria oprogramowania'))
+   OR (s.numer = 3 AND p.nazwa IN ('Statystyka', 'Systemy operacyjne', 'Architektura komputerow'))
+   OR (s.numer = 4 AND p.nazwa IN ('Java', 'Analiza matematyczna', 'Metody numeryczne'))
+   OR (s.numer = 5 AND p.nazwa IN ('Aplikacje webowe', 'Programowanie mobilne', 'Bezpieczenstwo sieci'))
+   OR (s.numer = 6 AND p.nazwa IN ('Sztuczna inteligencja', 'Hurtownie danych', 'Projekt zespolowy'))
 ON DUPLICATE KEY UPDATE
     przedmiot_id = VALUES(przedmiot_id);
